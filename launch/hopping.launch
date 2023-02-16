@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<launch>
+	<!--GPS-->
+	<include file="$(find ntrip_ros)/launch/ntrip_ros.launch"></include>
+
+	<!--IMU-->
+	<node pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">
+		<param name="port" value="/dev/ttyIMU" />
+		<param name="baud_rate" value="115200" />
+	</node>
+
+	<!-- Nodes -->
+	<node pkg="tricat231" type="serial_node.py" name="ARDUINO" args="/dev/ttyARDUINO" respawn="true"/>
+	<!-- 2022 version -->
+	<node pkg="tricat231" type="hopping.py" name="hoppingTour" output="screen"/>
+
+	<!-- Record -->
+	<arg name="do_record" default="true" />
+	<node pkg="rosbag" type="record" name="rosbag_record" required="true" args="record -a -O $(find tricat231)/data/rosbag/$(arg filename)" />
+	
+	<!-- Parameters -->
+	<rosparam command="load" file="$(find tricat231)/params/hopping_params.yaml"/>
+	
+</launch>
