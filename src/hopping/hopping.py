@@ -19,14 +19,13 @@ class Hopping:
         self.boat_x,self.boat_y=0
         self.goal_range=rospy.get_param("goal_range")
 
-        self.kp_distance = rospy.get_param("kp_distance") 
-        self.ki_distance = rospy.get_param("ki_distance")  
-        self.kd_distance = rospy.get_param("kd_distance")
-
         self.kp_servo = rospy.get_param("kp_servo")
         self.ki_servo = rospy.get_param("ki_servo")
         self.kd_servo = rospy.get_param("kd_servo")
 
+        self.kp_distance = rospy.get_param("kp_distance") 
+        self.ki_distance = rospy.get_param("ki_distance")  
+        self.kd_distance = rospy.get_param("kd_distance")
 
         # directions
         self.psi = 0  # 자북과 heading의 각도(자북 우측 +, 좌측 -) [degree]
@@ -35,8 +34,6 @@ class Hopping:
         self.psi_desire = 0  # 지구고정좌표계 기준 움직여야 할 각도
 
         # other fix values
-        self.angle_alpha = rospy.get_param("angle_alpha")
-        self.servo_range = rospy.get_param("servo_range")
         self.servo_middle = int((self.servo_range[0] + self.servo_range[1]) / 2)
         self.thruster_min = rospy.get_param("thruster_min")
         self.thruster_max = rospy.get_param("thruster_max")
