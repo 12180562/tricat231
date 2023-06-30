@@ -7,7 +7,7 @@ import numpy as np
 
 from geometry_msgs.msg import Point
 from std_msgs.msg import Float64, UInt16
-from sensor_msgs.msg import LaserScan
+from tricat231_pkg.msg import ObstacleList
 
 class Autonomous:
     def __init__(self):
@@ -15,12 +15,21 @@ class Autonomous:
         self.goal_x=self.waypoint[0][0]
         self.goal_y=self.waypoint[0][1]
         
+        #obstacle
+        
+        self.obstacles = []
         self.boat_x,self.boat_y=0
         self.goal_range=rospy.get_param("goal_range")
 
         self.kp_servo = rospy.get_param("kp_servo")
         self.ki_servo = rospy.get_param("ki_servo")
         self.kd_servo = rospy.get_param("kd_servo")
+        
+        # detecting variables
+        self.angle_list = []
+        self.detecting_angle = rospy.get_param("detecting_angle")
+        self.detecting_distance = rospy.get_param("detecting_distance")
+        self.angle_number = rospy.get_param("angle_number") # the number of angle
 
         # directions
         self.psi = 0  # 자북과 heading의 각도(자북 우측 +, 좌측 -) [degree]
@@ -29,6 +38,7 @@ class Autonomous:
         self.psi_desire = 0  # 지구고정좌표계 기준 움직여야 할 각도
 
         # other fix values
+        self.servo_range = rospy.get_param("servo_range")
         self.servo_middle = int((self.servo_range[0] + self.servo_range[1]) / 2)
         self.thruster_min = rospy.get_param("thruster_min")
         self.thruster_max = rospy.get_param("thruster_max")
@@ -38,149 +48,150 @@ class Autonomous:
         self.u_servo = self.servo_middle
         self.u_thruster = self.thruster_min
 
-        rospy.Subscriber("/heading",Float64,self.heading_callback)
-        rospy.Subscriber("/enu_postion",Point,self.boat_position_callback)
-        rospy.Subscriber("/scan", LaserScan, self.scan_callback)
-        #라이다 콜백
+        #subscribers
+        self.heading_sub=rospy.Subscriber("/heading",Float64,self.heading_callback)
+        self.enu_position_sub =rospy.Subscriber("/enu_postion",Point,self.boat_position_callback)
+        self.obstacl_sub = rospy.Subscriber("/obstacles", ObstacleList, self.obstacle_callback, queue_size=1)
 
         self.servo_pub=rospy.Publisher("/servo",UInt16)
         self.thruster_pub=rospy.Publisher("/thruster",UInt16)
 
     def heading_callback(self,msg):
         self.psi=msg.data
+        
+    def obstacle_callback(self, msg):
+        self.obstacles = msg.obstacle
 
     def boat_position_callback(self,msg):
         self.boat_x=msg.x
         self.boat_y=msg.y
 
-    def scan_callback(self, msg):
-        self.input_points = []
-        phi = msg.angle_min  # 각 점의 각도 계산 위해 계속 누적해갈 각도
-        for r in msg.ranges:
-            if msg.range_min <= r <= msg.range_max:
-                self.input_points.append(r)
-            phi += msg.angle_increment
+    def make_detecting_vector(self):
+        angle_list = [self.psi]
+        detecting_points = np.zeros([self.angle_number+1,4])
 
-    #라이다 콜백 추가
+        for i in range(int(self.angle_number/2)):
+            angle_list.append(self.psi + (i+1)*self.detecting_angle/(self.angle_number/2))
+            angle_list.append(self.psi - (i+1)*self.detecting_angle/(self.angle_number/2))
 
-    def delete_vector_inside_obstacle(self, reachableVel_global_all, OS):
-        # for obstacle detecting, we use some line data like start point, end point, linear equation
+        for j in range(len(angle_list)):
+            detecting_points[j][0] = math.cos(angle_list[j])
+            detecting_points[j][1] = math.sin(angle_list[j])
+            detecting_points[j][3] = angle_list[j]
+
+        return detecting_points
+
+    def delete_vector_inside_obstacle(self, reachableVel_global_all, position, static_obstacle_info):
+    
+        #static_OB_data = static_obstacle_info
+        #static_OB_data = [[50,100],[100,100],[100,100],[100,50],[100,50],[50,50],[50,50],[50,100],[-50,-100],[-100,-100],[-100,-100],[-100,-50],[-100,-50],[-50,-50],[-50,-50],[-50,-100]]
+        #static_OB_data = [[46.97,153.03],[82.32,117.68],[82.32,117.68],[-117.68,-82.32],[-117.68,-82.32],[-153.03,-46.97],[153.03,46.97],[117.68,82.32],[117.68,82.32],[-82.32,-117.68],[-82.32,-117.68],[-46.97,-153.03]]
+        # static_OB_data = [[0, 0], [50, 0], [50, 0], [50, 50], [50, 50], [25, 50], [25, 50], [25, 150], [25, 150], [50, 150], [50, 150], [50, 175], [50, 175], [0, 175],[175, 0], [125, 0], [125, 0], [125, 75], [125, 75], [75, 75], [75, 75], [75, 125], [75, 125], [100, 125], [100, 125], [100, 175], [100, 175], [150, 175]]
+        static_OB_data = self.obstacles
         
-        static_OB_data = [[[[50.0, 100.0], [100.0, 100.0]], [[100.0, 100.0], [100.0, 50.0]], [[100.0, 50.0], [50.0, 50.0]], [[50.0, 50.0], [50.0, 100.0]]], [[[-50.0, -100.0], [-100.0, -100.0]], [[-100.0, -100.0], [-100.0, -50.0]], [[-100.0, -50.0], [-50.0, -50.0]], [[-50.0, -50.0], [-50.0, -100.0]]]]
-        #장애물 리스트 -> 라이다 데이터로 추가해주기
+        pA = np.array([self.boat_x,self.boat_y])
+        delta_t = 1
+        obstacle_number = 0
 
-        pA = np.array([OS['Pos_X'], OS['Pos_Y']])
-        delta_t = 40 # seconds
+        while (obstacle_number) != len(static_OB_data):
+            obstacle_point_x = [static_OB_data[obstacle_number].x,static_OB_data[obstacle_number+1].x] 
+            obstacle_point_y = [static_OB_data[obstacle_number].y,static_OB_data[obstacle_number+1].y] 
 
-        # iteration for all the line data
-        for line_data in static_OB_data:
-            for i in line_data:
-                obstacle_point_x = [i[0][0],i[1][0]] # x끼리, y끼리 묶어서 포인트 셋 만들어 줌 (clear)
-                obstacle_point_y = [i[0][1],i[1][1]] # (clear)
+            if obstacle_point_x[0] > obstacle_point_x[1]:
+                obstacle_point_x.reverse()
+                obstacle_point_y.reverse()
 
-                if obstacle_point_x[0] > obstacle_point_x[1]:
-                    obstacle_point_x.reverse()
-                    obstacle_point_y.reverse()
+            if (obstacle_point_x[0]-obstacle_point_x[1]) == 0 and (obstacle_point_y[0]-obstacle_point_y[1]) > 0:
+                slope = 9999
 
-                if (obstacle_point_x[0]-obstacle_point_x[1]) == 0 and (obstacle_point_y[0]-obstacle_point_y[1]) > 0:
-                    slope = 9999 # for avoid zero divizion # (clear)
+            elif (obstacle_point_x[0]-obstacle_point_x[1]) == 0 and (obstacle_point_y[0]-obstacle_point_y[1]) < 0:
+                slope =-9999
 
-                elif (obstacle_point_x[0]-obstacle_point_x[1]) == 0 and (obstacle_point_y[0]-obstacle_point_y[1]) < 0:
-                    slope =-9999
+            else: 
+                slope = (obstacle_point_y[1]-obstacle_point_y[0])/(obstacle_point_x[1]-obstacle_point_x[0])
+                
+            reachableVel_global_all_after_delta_t = reachableVel_global_all * delta_t 
+            result = []
 
-                else: #(clear)
-                    slope = (obstacle_point_y[1]-obstacle_point_y[0])/(obstacle_point_x[1]-obstacle_point_x[0]) # (clear)
-                # if obstacle point have same, x coordinate, it can make error, that is zero devision. so we have to solve this problem
-                reachableVel_global_all_after_delta_t = reachableVel_global_all * delta_t # (clear)
-                result = []
-                #print(slope)
+            for i in range(len(reachableVel_global_all_after_delta_t)): 
+                after_delta_t_x = reachableVel_global_all_after_delta_t[i][0]+pA[0]
+                after_delta_t_y = reachableVel_global_all_after_delta_t[i][1]+pA[1]
+                if (pA[0]-after_delta_t_x) == 0 and (pA[1]-after_delta_t_y) < 0:
+                    vector_slope = 9999
 
-                for i in range(len(reachableVel_global_all_after_delta_t)-1): #(claer)
-                    after_delta_t_x = reachableVel_global_all_after_delta_t[i][0]+pA[0]
-                    after_delta_t_y = reachableVel_global_all_after_delta_t[i][1]+pA[1]
-                    if (pA[0]-after_delta_t_x) == 0:
-                        vector_slope = 9999
-                    else:
-                        vector_slope = (pA[1]-after_delta_t_y)/(pA[0]-after_delta_t_x)
+                elif (pA[0]-after_delta_t_x) == 0 and (pA[1]-after_delta_t_y) > 0:
+                    vector_slope = -9999
+                else:
+                    vector_slope = (pA[1]-after_delta_t_y)/(pA[0]-after_delta_t_x)
 
-                    #print(vector_slope)
-                    # we use get_crosspt function for check the point that is crossed by two line (vector, obstacle)
-                    if self.get_crosspt(slope, vector_slope, obstacle_point_x[0], obstacle_point_y[0],obstacle_point_x[1], obstacle_point_y[1], pA[0], pA[1], after_delta_t_x, after_delta_t_y):
-                        component = reachableVel_global_all[i]
-                        component_list = component.tolist()
-                        result.append(component_list)
-                    else:
-                        pass
+                if self.get_crosspt(slope, vector_slope, obstacle_point_x[0], obstacle_point_y[0],obstacle_point_x[1], obstacle_point_y[1], pA[0], pA[1], after_delta_t_x, after_delta_t_y):
+                    reachableVel_global_all[i][2] = reachableVel_global_all[i][2]-50
+                else:
+                    pass
 
-                reachableVel_global_all = np.array(result)
+            obstacle_number = obstacle_number+2
 
         return reachableVel_global_all
-            
+        
     def get_crosspt(self, slope, vector_slope, start_x, start_y,end_x, end_y, OS_pos_x, OS_pos_y, after_delta_t_x, after_delta_t_y):
 
         x_point = [start_x, end_x]
         y_point = [start_y, end_y]
 
-        if (slope) == (vector_slope): # parellel
+        if (slope) == (vector_slope): 
             return True
 
-        # if two lines are parellel, it can be two situation, firstone is two line is same and can make collision, secondone is just parellel. (no point makes collision)
-        # so, we have to make some function that varifiy the type of line, firstone or secondone
         else:
             cross_x = (start_x * slope - start_y - OS_pos_x * vector_slope + OS_pos_y) / (slope - vector_slope)
             cross_y = slope * (cross_x - start_x) + start_y
-            #print(f"현재 위치 : ({OS_pos_x},{OS_pos_y})")
-            #print(f"미래 위치 : {after_delta_t_x},{after_delta_t_y}")
-            #print(f"교점 : {cross_x},{cross_y}")
 
             if OS_pos_x <= after_delta_t_x and OS_pos_y <= after_delta_t_y:
-                #print("first")
                 if (min(x_point)-5) <= cross_x <= (max(x_point)+5) and (min(y_point)-5) <= cross_y <= (max(y_point)+5):
-                    if OS_pos_x <= cross_x <= after_delta_t_x and OS_pos_y <= cross_y <= after_delta_t_y: # vector cross, False (delete vector)
+                    if OS_pos_x <= cross_x <= after_delta_t_x and OS_pos_y <= cross_y <= after_delta_t_y:
                         print(False)
                         return False
                     else:
-                        #print(True)
                         return True
                 else:
                     return True
 
             elif OS_pos_x >= after_delta_t_x and OS_pos_y <= after_delta_t_y:
-                #print("second")
                 if (min(x_point)-5) <= cross_x <= (max(x_point)+5) and (min(y_point)-5) <= cross_y <= (max(y_point)+5):
-                    if after_delta_t_x <= cross_x <= OS_pos_x and OS_pos_y <= cross_y <= after_delta_t_y: # vector cross, False (delete vector)
+                    if after_delta_t_x <= cross_x <= OS_pos_x and OS_pos_y <= cross_y <= after_delta_t_y:
                         print(False)
                         return False
                     else:
-                        #print(True)
                         return True
                 else:
                     return True
 
             elif OS_pos_x <= after_delta_t_x and OS_pos_y >= after_delta_t_y:
-                #print("third")
                 if (min(x_point)-5) <= cross_x <= (max(x_point)+5) and (min(y_point)-5) <= cross_y <= (max(y_point)+5):
-                    if OS_pos_x <= cross_x <= after_delta_t_x and  after_delta_t_y <= cross_y <= OS_pos_y: # vector cross, False (delete vector)
+                    if OS_pos_x <= cross_x <= after_delta_t_x and  after_delta_t_y <= cross_y <= OS_pos_y:
                         print(False)
                         return False
                     else:
-                        #print(True)
                         return True
                 else:
                     return True
 
             else:
-                #print("forth")
                 if (min(x_point)-5) <= cross_x <= (max(x_point)+5) and (min(y_point)-5) <= cross_y <= (max(y_point)+5):
-                    if after_delta_t_x <= cross_x <= OS_pos_x and after_delta_t_y <= cross_y <= OS_pos_y: # vector cross, False (delete vector)
+                    if after_delta_t_x <= cross_x <= OS_pos_x and after_delta_t_y <= cross_y <= OS_pos_y:
                         print(False)
                         return False
                     else:
-                        #print(True)
                         return True
                 else:
                     return True
 
+    def choose_velocity_vector(self,reachableVel_global_all):
+        vector_desired = 0
+        for reachable_angel in enumerate(reachableVel_global_all):
+            if abs(math.degree(math.atan2(self.goal_y - self.boat_y, self.goal_x - self.boat_x))):
+                vector_desired = reachable_angel[3]
+        return vector_desired
+    
     def cal_distance_goal(self):
         self.distance_goal=math.hypot(self.boat_x-self.goal_x,self.boat_y-self.goal_y)
 
@@ -280,4 +291,3 @@ def main():
 
 if __name__=="__main__":
     main()
-

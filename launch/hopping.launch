@@ -2,7 +2,7 @@
 
 <launch>
 	<!--GPS-->
-	<include file="$(find ntrip_ros)/launch/ntrip_ros.launch"></include>
+	<include file="$(find ublox_gps)/launch/ublox_device.launch"></include>
 
 	<!--IMU-->
 	<node pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">
@@ -11,15 +11,16 @@
 	</node>
 
 	<!-- Nodes -->
-	<node pkg="tricat231" type="serial_node.py" name="ARDUINO" args="/dev/ttyARDUINO" respawn="true"/>
-	<!-- 2022 version -->
-	<node pkg="tricat231" type="hopping.py" name="hoppingTour" output="screen"/>
+	<node pkg="tricat231_pkg"  type="gnss_converter.py" name="gnssConverter" respawn="true"/>
+	<node pkg="tricat231_pkg"  type="heading_converter.py" name="headingConverter" respawn="true"/>
+	<node pkg="tricat231_pkg" type="hopping.py" name="hoppingTour" output="screen"/>
+	<!-- <node pkg="tricat231_pkg" type="serial_node.py" name="ARDUINO" args="/dev/ttyARDUINO" respawn="true"/> -->
 
-	<!-- Record -->
+	<!-- Record
 	<arg name="do_record" default="true" />
-	<node pkg="rosbag" type="record" name="rosbag_record" required="true" args="record -a -O $(find tricat231)/data/rosbag/$(arg filename)" />
+	<node pkg="rosbag" type="record" name="rosbag_record" required="true" args="record -a -O $(find tricat231)/data/rosbag/$(arg filename)" /> -->
 	
 	<!-- Parameters -->
-	<rosparam command="load" file="$(find tricat231)/params/hopping_params.yaml"/>
+	<rosparam command="load" file="$(find tricat231_pkg)/params/hopping_params.yaml"/>
 	
 </launch>
