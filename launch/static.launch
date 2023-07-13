@@ -23,15 +23,15 @@
 	<!-- Nodes -->
     <node pkg="tricat231_pkg"  type="heading_converter.py" name="headingConverter" respawn="true"/>
     <node pkg="tricat231_pkg" type="gnss_converter.py" name="GnssConverter" respawn="true" output="screen"/>
-	<node pkg="tricat231_pkg" type="hyo.py" name="fuzzy" output="screen"/>
-	<node pkg="tricat231_pkg" type="serial_node.py" name="ARDUINO" args="/dev/ttyARDUINO" respawn="true"/>
 	<node pkg="tricat231_pkg" type="lidar_clustering.py" name="LidarCluster" args="/dev/rplidar" respawn="true"/>
+	<node pkg="tricat231_pkg" type="static.py" name="static" output="screen"/>
+	<node pkg="tricat231_pkg" type="serial_node.py" name="ARDUINO" args="/dev/ttyARDUINO" respawn="true"/>
 
 	<!-- Record -->
 	<arg name="do_record" default="false" />
 	<node pkg="rosbag" type="record" name="rosbag_record" required="true" if="$(arg do_record)" args="record -a -O $(find tricat231_pkg)/data/rosbag/$(arg filename)"  />
 
     <!-- Parameters -->
-	<rosparam command="load" file="$(find tricat231_pkg)/params/hyo_params.yaml"/>
+	<rosparam command="load" file="$(find tricat231_pkg)/params/231_params.yaml"/>
 	
 </launch>

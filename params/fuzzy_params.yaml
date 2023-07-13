@@ -1,7 +1,0 @@
-autonomous_goal: [37.451133, 126.65612, 50.0]
-
-goal_range: 1.5
-servo_range: [78, 113]
-kp_servo: 0
-kd_servo: 0
-thruster: 1600
