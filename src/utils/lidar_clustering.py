@@ -1,22 +1,5 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding:utf-8 -*-
-
-#######################################################################
-# Copyright (C) 2022 EunGi Han(winterbloooom) (winterbloooom@gmail.com)
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>
-
 """Subscribe 2D laser scanner(LiDAR) raw scanning data and cluster them
 
 Notes:
@@ -51,61 +34,30 @@ Notes:
             Step (d)에서 '그룹 시작에서 이 점까지 거리'가 "wall_particle_length" 이상이면 이 지점에서 벽을 쪼갬
             >>>>> 벽을 잘게 쪼개고 싶다면 이 값을 작게 설정
 """
+import sys, os
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 import os
 import sys
 from math import pow, sqrt
 import cv2
 import rospy
+
 from sensor_msgs.msg import LaserScan
+from tricat231_pkg.msg import Obstacle, ObstacleList
 from visualization_msgs.msg import MarkerArray
-
-
-import sys, os
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-
 
 import gnss_converter as gc
 import show as visual
 from lidar_calc import Point, PointSet
 
-
-from tricat231_pkg.msg import Obstacle, ObstacleList
-
-
 class Lidar_Converter:
     def __init__(self):
-
-
         self.boat_x, self.boat_y = 0,0  # 현재 보트 위치
         self.goal_x, self.goal_y, _ = gc.enu_convert(rospy.get_param("autonomous_goal"))  # 목표점 위치
-        # sub, pub
-        rospy.Subscriber("/scan", LaserScan, self.lidar_raw_callback, queue_size=1) 
-        self.obstacle_pub = rospy.Publisher("/obstacles", ObstacleList, queue_size=10) # 클러스터링 완료한 장애물 publish 형태
-        #begin: 
-        #   x: -2.7549397092515244
-        #   y: 0.07644232912367258
-        #   z: 0.0
-        # end: 
-        #   x: -2.7520000934600737
-        #   y: -2.2520949986649115e-07
-        #   z: 0.0
 
-        # 기본 출력형태는 위와 같으며 아래와 같이 원하는 값을 for문을 통해 추출할 수 있다.
-
-        # begin_x
-        # -2.7549397092515244
-        # begin_y
-        # 0.07644232912367258
-        # end_x
-        # -2.7520000934600737
-        # end_y
-        # -2.2520949986649115e-07
-
-        
-
-        self.rviz_pub = rospy.Publisher("/rviz_visual", MarkerArray, queue_size=10)
-
+        # on/off
+        self.controller = rospy.get_param("controller")
         # params
         self.min_input_points_size = rospy.get_param("min_input_points_size") # 최소 스캐닝 포인트 개수
         self.max_gap_in_set = rospy.get_param("max_gap_in_set") # 한 그룹으로 묶을 포인트 간 거리 ( x 0.1 meters ) 점 간 거리를 의미함
@@ -113,10 +65,6 @@ class Lidar_Converter:
         self.max_dist_to_ps_line = rospy.get_param("max_dist_to_ps_line") # 그룹에서부터 점까지 최대 거리 ( x 0.1 meters ) 투영(projection)에서 사용되는 parameter
         self.min_wall_length = rospy.get_param("min_wall_length") # 벽이라고 인정할 최소 길이 ( x 0.1 meters )
         self.wall_particle_length = rospy.get_param("wall_particle_length") # 벽 분할할 길이 ( x 0.1 meters )
-
-
-        # on/off
-        self.controller = rospy.get_param("controller")
 
         # scanning / converted data
         self.input_points = []  # 라이다에서 받은 모든 점들을 (x, y) 형태로 저장
@@ -141,18 +89,33 @@ class Lidar_Converter:
                 "wall_particle_length", "controller", rospy.get_param("wall_particle_length"), 50, lambda x: x
             )  # X 0.1 meter
 
-    def get_trackbar_pos(self):
-        """get trackbar positions and set each values"""
-        if self.controller:
-            self.max_gap_in_set = cv2.getTrackbarPos("max_gap_in_set", "controller") * 0.1
-            self.point_set_size = cv2.getTrackbarPos("point_set_size", "controller")
-            self.max_dist_to_ps_line = cv2.getTrackbarPos("max_dist_to_ps_line", "controller") * 0.1
-            self.min_wall_length = cv2.getTrackbarPos("min_wall_length", "controller") * 0.1
-            self.wall_particle_length = cv2.getTrackbarPos("wall_particle_length", "controller") * 0.1
+        # sub, pub
+        rospy.Subscriber("/scan", LaserScan, self.lidar_raw_callback, queue_size=1) 
+        self.obstacle_pub = rospy.Publisher("/obstacles", ObstacleList, queue_size=10) # 클러스터링 완료한 장애물 publish 형태
+        #begin: 
+        #   x: -2.7549397092515244
+        #   y: 0.07644232912367258
+        #   z: 0.0
+        # end: 
+        #   x: -2.7520000934600737
+        #   y: -2.2520949986649115e-07
+        #   z: 0.0
+
+        # 기본 출력형태는 위와 같으며 아래와 같이 원하는 값을 for문을 통해 추출할 수 있다.
+
+        # begin_x
+        # -2.7549397092515244
+        # begin_y
+        # 0.07644232912367258
+        # end_x
+        # -2.7520000934600737
+        # end_y
+        # -2.2520949986649115e-07
+
+        self.rviz_pub = rospy.Publisher("/rviz_visual", MarkerArray, queue_size=10)
 
     def lidar_raw_callback(self, msg): # 초기 raw_data를 받는 callback 함수 부분이다
         """Subscribe lidar scanning data
-
         Notes:
             * phi
                 * angle in radians
@@ -174,13 +137,20 @@ class Lidar_Converter:
 
             phi += msg.angle_increment
 
-
-
         # subscriber와 publisher의 sink를 맞추기 위해 이곳에서 모두 진행
         self.get_trackbar_pos()
         self.process_points()
         self.publish_obstacles()
         self.publish_rviz()
+
+    def get_trackbar_pos(self):
+        """get trackbar positions and set each values"""
+        if self.controller:
+            self.max_gap_in_set = cv2.getTrackbarPos("max_gap_in_set", "controller") * 0.1
+            self.point_set_size = cv2.getTrackbarPos("point_set_size", "controller")
+            self.max_dist_to_ps_line = cv2.getTrackbarPos("max_dist_to_ps_line", "controller") * 0.1
+            self.min_wall_length = cv2.getTrackbarPos("min_wall_length", "controller") * 0.1
+            self.wall_particle_length = cv2.getTrackbarPos("wall_particle_length", "controller") * 0.1
 
     def process_points(self):
         """Clustering process"""
@@ -194,7 +164,6 @@ class Lidar_Converter:
 
     def group_points(self):
         """Group adjacent raw scanning points
-
         Notes:
             "del point_set"
                 파이썬은 변수 자체가 포인터 역할을 하므로,
@@ -216,7 +185,6 @@ class Lidar_Converter:
                 point_set.append_point(p)
         self.point_sets_list.append(point_set)  # 마지막 그룹까지 추가
 
-
         # 중복으로 들어간 첫 번째 점 제거
         self.point_sets_list[0].begin = self.point_sets_list[0].point_set[1]
         self.point_sets_list[0].set_size -= 1
@@ -224,7 +192,6 @@ class Lidar_Converter:
 
     def split_group(self, ps):
         """Split group(point set) into smaller groups
-
         Args:
             ps (PointSet): querying point set(group)
         """
@@ -247,7 +214,6 @@ class Lidar_Converter:
             if split_idx < self.point_set_size or (ps.set_size - split_idx) < self.point_set_size: # 범위를 벗어나면 한 개의 그룹으로 생각해서 classify groups로 넘어간다.
                 return
             
-
             # 2개의 그룹으로 나누어서 각각 새로운 그룹으로 분류를 한 이후 기존의 그룹은 삭제를 하는 과정을 거친다
 
             ps1 = PointSet()
@@ -268,36 +234,24 @@ class Lidar_Converter:
 
     def classify_groups(self):
         """Classify groups(point sets) as Walls or Buoys
-
         If length of group is long, classify as wall and split it into small groups.
         Append it to final clustering result list after splitting in "split_wall()" function.
         If not, just append it to final clustering list ("obstacles")
         """
         for ps in self.point_sets_list:
-
             if ps.dist_begin_to_end() > self.min_wall_length: # points_sets_list의 길이 즉 장애물의 길이  >  벽이라고 인정할 최소 길이 
-
-                
-    
-                
                 # self.split_wall(ps)
                 self.obstacles.append(ps)
-            
             else:
-                            
                 self.clusturing_buoy(ps)
                 # self.obstacles.append(ps)
 
-
-
     def split_wall(self, ps):
         """Split long groups into short ones
-
         Notes:
             "del wall_particle"
                 -> group_points() 함수 참고
         """
-
         wall_particle = PointSet()
         wall_particle.append_point(ps.begin)
         for p in ps.point_set:
@@ -307,15 +261,9 @@ class Lidar_Converter:
                 wall_particle = PointSet()
             wall_particle.append_point(p)
 
-
-        
         self.obstacles.append(wall_particle)  # last group
 
-
-
-
     def clusturing_buoy(self, ps):
-
         buoy_particle = PointSet()
         buoy_particle.append_point(ps.begin)
 
@@ -324,20 +272,14 @@ class Lidar_Converter:
         min = 999
 
         for p in ps.point_set: # 가장 가까운 점을 찾는 구문
-
             # print("구 시작점",p.x)
             # print("구 끝점",p.y)
-
-        
             line.append(p)
-
-
             res = sqrt(pow(p.y - self.boat_y, 2.0) + pow(p.x - self.boat_x, 2.0))
 
             if res  < min:
                 min = res
                 closed_point = [p.x,p.y] # 가장 가까운 점
-                
         # print("-------------------------")
         # print("제일 가까운 점",closed_point)
         # print("과거 시작점",line[0].x,line[0].y)
@@ -365,11 +307,9 @@ class Lidar_Converter:
         new_begin_point = (new_begin_point_x,new_begin_point_y)
         new_end_point = (new_end_point_x,new_end_point_y)
 
-
         # print("새로운 시작점",new_begin_point)
         # print("새로운 끝점",new_end_point)
 
-        
         new_buoy_list= [new_begin_point, new_end_point] # 교차되는 점들을 새로운 리스트에 담는다
 
         # print(new_buoy_list)
@@ -377,18 +317,11 @@ class Lidar_Converter:
         self.buoy_particle.append(new_buoy_list)
         self.obstacles.append(buoy_particle)
 
-
-        
-
     def publish_obstacles(self):
         """Publish clustering results in (x, y) coordinate format"""
-
         ob_list = ObstacleList()
 
-
         for ob in self.obstacles: # buoy + wall의 장애물 obstacles 들을 전달 msg 타입에 맞춰서 ( ex) Point.begin.x) ob_list에 넣는다
-
-
             obstacle = Obstacle()
             obstacle.begin.x = ob.begin.x
             obstacle.begin.y = ob.begin.y
@@ -396,11 +329,7 @@ class Lidar_Converter:
             obstacle.end.y = ob.end.y
             ob_list.obstacle.append(obstacle)
 
-
-
         self.obstacle_pub.publish(ob_list)
-
-
 
     def publish_rviz(self):
         ids = list(range(0, 100))
@@ -415,28 +344,24 @@ class Lidar_Converter:
             for p in ps.point_set:
                 filtered_points.append([p.x, p.y])
         filtered_points = visual.points_rviz(
-            name="filtered_points", id=ids.pop(), points=filtered_points, color_r=235, color_g=128, color_b=52
-        )
+            name="filtered_points", id=ids.pop(), points=filtered_points, color_r=235, color_g=128, color_b=52)
 
         point_set = []  # after "split_group", all groups(point sets)
         for ps in self.point_sets_list:
             point_set.append([ps.begin.x, ps.begin.y])
             point_set.append([ps.end.x, ps.end.y])
         point_set = visual.linelist_rviz(
-            name="point_set", id=ids.pop(), lines=point_set, color_r=55, color_g=158, color_b=54, scale=0.1
-        )
+            name="point_set", id=ids.pop(), lines=point_set, color_r=55, color_g=158, color_b=54, scale=0.1)
 
         obstacle = []  # after "split_wall", final clustering results
         for ob in self.obstacles:
             obstacle.append([ob.begin.x, ob.begin.y])
             obstacle.append([ob.end.x, ob.end.y])
         obstacle = visual.linelist_rviz(
-            name="obstacle", id=ids.pop(), lines=obstacle, color_r=10, color_g=81, color_b=204, scale=0.1
-        )
+            name="obstacle", id=ids.pop(), lines=obstacle, color_r=10, color_g=81, color_b=204, scale=0.1)
 
         all_markers = visual.marker_array_rviz([input_points, filtered_points, point_set, obstacle])
         self.rviz_pub.publish(all_markers)
-
 
 def main():
     rospy.init_node("LidarConverter", anonymous=False)
@@ -447,9 +372,8 @@ def main():
         if cv2.waitKey(1) == 27:
             cv2.destroyAllWindows()
             break
-
         rate.sleep()
-
+    rospy.spin()
 
 if __name__ == "__main__":
     main()
