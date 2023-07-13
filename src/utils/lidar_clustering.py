@@ -1,7 +1,24 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
 
+#######################################################################
+# Copyright (C) 2022 EunGi Han(winterbloooom) (winterbloooom@gmail.com)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>
+
 """Subscribe 2D laser scanner(LiDAR) raw scanning data and cluster them
+
 Notes:
     * Launch file: /tricat221/launch/sensor_test.launch의 <!-- LiDAR --> 부분 주석 해제 후 사용
     * Steps for clustering
@@ -35,21 +52,23 @@ Notes:
             >>>>> 벽을 잘게 쪼개고 싶다면 이 값을 작게 설정
 """
 
-import sys 
 import os
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-
+import sys
+from math import pow, sqrt
 import cv2
 import rospy
-from math import sqrt
-import numpy as np
 from sensor_msgs.msg import LaserScan
 from visualization_msgs.msg import MarkerArray
 
+
+import sys, os
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+
+
 import gnss_converter as gc
-import utils.show as visual
-from lidar_data_calc.lidar_list_calc import*
-from lidar_data_calc.lidar_point_calc import*
+import show as visual
+from lidar_calc import Point, PointSet
+
 
 from tricat231_pkg.msg import Obstacle, ObstacleList
 
@@ -57,22 +76,44 @@ from tricat231_pkg.msg import Obstacle, ObstacleList
 class Lidar_Converter:
     def __init__(self):
 
-        self.boat_x, self.boat_y = 0, 0  # 현재 보트 위치
-        # self.goal_x, self.goal_y, _ = gc.enu_convert(rospy.get_param("autonomous_goal"))  # 목표점 위치
 
-
+        self.boat_x, self.boat_y = 0,0  # 현재 보트 위치
+        self.goal_x, self.goal_y, _ = gc.enu_convert(rospy.get_param("autonomous_goal"))  # 목표점 위치
         # sub, pub
-        rospy.Subscriber("/scan", LaserScan, self.lidar_raw_callback, queue_size=1)
-        self.obstacle_pub = rospy.Publisher("/obstacles", ObstacleList, queue_size=10)
+        rospy.Subscriber("/scan", LaserScan, self.lidar_raw_callback, queue_size=1) 
+        self.obstacle_pub = rospy.Publisher("/obstacles", ObstacleList, queue_size=10) # 클러스터링 완료한 장애물 publish 형태
+        #begin: 
+        #   x: -2.7549397092515244
+        #   y: 0.07644232912367258
+        #   z: 0.0
+        # end: 
+        #   x: -2.7520000934600737
+        #   y: -2.2520949986649115e-07
+        #   z: 0.0
+
+        # 기본 출력형태는 위와 같으며 아래와 같이 원하는 값을 for문을 통해 추출할 수 있다.
+
+        # begin_x
+        # -2.7549397092515244
+        # begin_y
+        # 0.07644232912367258
+        # end_x
+        # -2.7520000934600737
+        # end_y
+        # -2.2520949986649115e-07
+
+        
+
         self.rviz_pub = rospy.Publisher("/rviz_visual", MarkerArray, queue_size=10)
 
         # params
-        self.max_gap_in_set = rospy.get_param("max_gap_in_set")
-        self.point_set_size = rospy.get_param("point_set_size")
-        self.max_dist_to_ps_line = rospy.get_param("max_dist_to_ps_line")
-        self.min_wall_length = rospy.get_param("min_wall_length")
-        self.wall_particle_length = rospy.get_param("wall_particle_length")
-        self.min_input_points_size = rospy.get_param("min_input_points_size")
+        self.min_input_points_size = rospy.get_param("min_input_points_size") # 최소 스캐닝 포인트 개수
+        self.max_gap_in_set = rospy.get_param("max_gap_in_set") # 한 그룹으로 묶을 포인트 간 거리 ( x 0.1 meters ) 점 간 거리를 의미함
+        self.point_set_size = rospy.get_param("point_set_size") # 한 그룹의 점의 개수
+        self.max_dist_to_ps_line = rospy.get_param("max_dist_to_ps_line") # 그룹에서부터 점까지 최대 거리 ( x 0.1 meters ) 투영(projection)에서 사용되는 parameter
+        self.min_wall_length = rospy.get_param("min_wall_length") # 벽이라고 인정할 최소 길이 ( x 0.1 meters )
+        self.wall_particle_length = rospy.get_param("wall_particle_length") # 벽 분할할 길이 ( x 0.1 meters )
+
 
         # on/off
         self.controller = rospy.get_param("controller")
@@ -80,8 +121,8 @@ class Lidar_Converter:
         # scanning / converted data
         self.input_points = []  # 라이다에서 받은 모든 점들을 (x, y) 형태로 저장
         self.point_sets_list = []  # point_set들의 리스트 [ps1, ps2, ...]
+        self.buoy_particle = [] # 부표로 판단된 장애물들을 저장
         self.obstacles = []  # 최종적으로 합쳐지고 나눠인 set들 저장 (wall + buoy)
-        self.buoy_particle = []
 
         # trackbar
         if self.controller:
@@ -109,8 +150,9 @@ class Lidar_Converter:
             self.min_wall_length = cv2.getTrackbarPos("min_wall_length", "controller") * 0.1
             self.wall_particle_length = cv2.getTrackbarPos("wall_particle_length", "controller") * 0.1
 
-    def lidar_raw_callback(self, msg):
+    def lidar_raw_callback(self, msg): # 초기 raw_data를 받는 callback 함수 부분이다
         """Subscribe lidar scanning data
+
         Notes:
             * phi
                 * angle in radians
@@ -119,17 +161,20 @@ class Lidar_Converter:
             * Origin is LiDAR (boat), not ENU origin
         """
         # initialize all data lists
-        self.input_points = []
+        self.input_points = [] # 초기 라이다 데이터는 r, phi형태로 들어오는데 이를 좌표형태로 만들어서 넣는 리스트이다.
         self.point_sets_list = []
         self.obstacles = []
 
-        # save range data
+        # save range data r, phi형태로 들어오는데 이를 좌표형태로 만들어서 넣는 리스트이다. 나와있는 angle_min 등등은 초기 라이다 msg에 있는 것들이다.
         phi = msg.angle_min
         for r in msg.ranges:
             if msg.range_min <= r <= msg.range_max:
                 p = Point.polar_to_cartesian(r, phi)
                 self.input_points.append(p)
+
             phi += msg.angle_increment
+
+
 
         # subscriber와 publisher의 sink를 맞추기 위해 이곳에서 모두 진행
         self.get_trackbar_pos()
@@ -139,8 +184,8 @@ class Lidar_Converter:
 
     def process_points(self):
         """Clustering process"""
-        if len(self.input_points) < self.min_input_points_size:
-            return
+        if len(self.input_points) < self.min_input_points_size:  # 넣은 점들 리스트의 개수 < 최소 리스트 개수(param). 즉 스캐닝 포인트 개수
+            return 
 
         self.group_points()
         for ps in self.point_sets_list:
@@ -149,6 +194,7 @@ class Lidar_Converter:
 
     def group_points(self):
         """Group adjacent raw scanning points
+
         Notes:
             "del point_set"
                 파이썬은 변수 자체가 포인터 역할을 하므로,
@@ -159,9 +205,9 @@ class Lidar_Converter:
         point_set = PointSet()
         point_set.append_point(self.input_points[0])  # 중복으로 들어가게 될 것임. 마지막에 제거할 것
         for p in self.input_points:
-            if p.dist_btw_points(point_set.end) > self.max_gap_in_set:
-                if point_set.set_size > self.point_set_size:
-                    self.point_sets_list.append(point_set)  # set of point groups
+            if p.dist_btw_points(point_set.end) > self.max_gap_in_set: # 장애물들까지의 거리 > 한 그룹으로 묶을 포인트 간 거리(param). 즉 임계값 기준점을 잡는다
+                if point_set.set_size > self.point_set_size: # 넣은 그룹내의 점의 개수 > 지정한 그룹내의 점의 개수(param). 즉 집합으로 묶을 수 있는 점의 최소 개수를 설정
+                    self.point_sets_list.append(point_set)  # set of point groups 즉 몇개의 그룹을 넣었는지를 또 새로운 리스트(points_sets_list)에 추가
 
                 del point_set  # delete previous group instance
                 point_set = PointSet()  # new group
@@ -170,6 +216,7 @@ class Lidar_Converter:
                 point_set.append_point(p)
         self.point_sets_list.append(point_set)  # 마지막 그룹까지 추가
 
+
         # 중복으로 들어간 첫 번째 점 제거
         self.point_sets_list[0].begin = self.point_sets_list[0].point_set[1]
         self.point_sets_list[0].set_size -= 1
@@ -177,8 +224,9 @@ class Lidar_Converter:
 
     def split_group(self, ps):
         """Split group(point set) into smaller groups
+
         Args:
-            ps (lidar_list_calc.PointSet): querying point set(group)
+            ps (PointSet): querying point set(group)
         """
         max_distance = 0  # 그룹의 첫점 ~ 끝점 이은 직선으로부터 가장 멀리 떨어진 점까지의 거리
         split_idx = 0  # max_distance를 가지는 점의 그룹 내 인덱스
@@ -186,18 +234,21 @@ class Lidar_Converter:
 
         # find the farthest point from group
         for p in ps.point_set:
-            dist_to_ps_line = ps.dist_to_point(p)  # distance from line to point
+            dist_to_ps_line = ps.dist_to_point(p)  # distance from line to point 즉 특정 점과 이 PointSet까지의 거리
             # print(p.x, "라인까지 거리", dist_to_ps_line)
-            if dist_to_ps_line > max_distance:
+            if dist_to_ps_line > max_distance: # 특정 점과 이 PointSet까지의 거리 > 그룹의 첫점 ~ 끝점 이은 직선으로부터 가장 멀리 떨어진 점까지의 거리
                 max_distance = dist_to_ps_line
                 split_idx = point_idx
             point_idx += 1
 
         # split groups
-        if max_distance > self.max_dist_to_ps_line:
+        if max_distance > self.max_dist_to_ps_line: # 그룹의 첫점 ~ 끝점 이은 직선으로부터 가장 멀리 떨어진 점까지의 거리 > 그룹에서부터 점까지 최대 거리(param)
             # if two splitted groups would be too small, don't split this
-            if split_idx < self.point_set_size or (ps.set_size - split_idx) < self.point_set_size:
+            if split_idx < self.point_set_size or (ps.set_size - split_idx) < self.point_set_size: # 범위를 벗어나면 한 개의 그룹으로 생각해서 classify groups로 넘어간다.
                 return
+            
+
+            # 2개의 그룹으로 나누어서 각각 새로운 그룹으로 분류를 한 이후 기존의 그룹은 삭제를 하는 과정을 거친다
 
             ps1 = PointSet()
             ps1.input_point_set(ps.point_set[:split_idx])
@@ -206,104 +257,138 @@ class Lidar_Converter:
 
             # print("현재 ps의 인덱스", (self.point_sets_list).index(ps))
             # print("나누기 이전 psl 크기", len(self.point_sets_list))
+
             self.point_sets_list.insert(self.point_sets_list.index(ps), ps1)
-            # print("0번 ps의 첫 점 x", point_sets_list[0].point_set[0].x, "ps 크기 ", len(point_sets_list[0].point_set))
-            # print("1번 ps의 첫 점 x", point_sets_list[1].point_set[0].x, "ps 크기 ", len(point_sets_list[1].point_set))
-            # print("2번 ps의 첫 점 x", point_sets_list[2].point_set[0].x, "ps 크기 ", len(point_sets_list[2].point_set))
             self.point_sets_list.insert(self.point_sets_list.index(ps), ps2)
-            # print("0번 ps의 첫 점 x", point_sets_list[0].point_set[0].x, "ps 크기 ", len(point_sets_list[0].point_set))
-            # print("1번 ps의 첫 점 x", point_sets_list[1].point_set[0].x, "ps 크기 ", len(point_sets_list[1].point_set))
-            # print("2번 ps의 첫 점 x", point_sets_list[2].point_set[0].x, "ps 크기 ", len(point_sets_list[2].point_set))
-            # print("3번 ps의 첫 점 x", point_sets_list[3].point_set[0].x, "ps 크기 ", len(point_sets_list[3].point_set))
+            del self.point_sets_list[self.point_sets_list.index(ps)]  # 나눠서 저장한 뒤 원본 그룹 삭
 
-            del self.point_sets_list[self.point_sets_list.index(ps)]  # 나눠서 저장한 뒤 원본 그룹 삭제
-
-            # print("나눈 후 psl 크기 ", len(point_sets_list))
-            # print("0번 ps의 첫 점 x", point_sets_list[0].point_set[0].x, "ps 크기 ", len(point_sets_list[0].point_set))
-            # print("1번 ps의 첫 점 x", point_sets_list[1].point_set[0].x, "ps 크기 ", len(point_sets_list[1].point_set))
-            # print("2번 ps의 첫 점 x", point_sets_list[2].point_set[0].x, "ps 크기 ", len(point_sets_list[2].point_set))
-            # print("3번 ps의 첫 점 x", point_sets_list[3].point_set[0].x, "ps 크기 ", len(point_sets_list[3].point_set))
-
-            # split groups recursively
+            # split groups을 다시 한 번 수행한다.
             self.split_group(ps1)
             self.split_group(ps2)
 
     def classify_groups(self):
         """Classify groups(point sets) as Walls or Buoys
+
         If length of group is long, classify as wall and split it into small groups.
         Append it to final clustering result list after splitting in "split_wall()" function.
         If not, just append it to final clustering list ("obstacles")
         """
         for ps in self.point_sets_list:
-            if ps.dist_begin_to_end() > self.min_wall_length:
-                self.split_wall(ps)
-            else:
-                self.clusturing_buoy(ps)
 
+            if ps.dist_begin_to_end() > self.min_wall_length: # points_sets_list의 길이 즉 장애물의 길이  >  벽이라고 인정할 최소 길이 
+
+                
     
-    def clusturing_buoy(self, ps):
-        
-        buoy_particle = PointSet()
-        buoy_particle.append_point(ps.begin)
-
-        min = 999
-
-        for p in ps.point_set:
-
-            res = sqrt(pow(p.y - self.boat_y, 2.0) + pow(p.x - self.boat_x, 2.0))
-
+                
+                # self.split_wall(ps)
+                self.obstacles.append(ps)
             
-
-            if res  < min:
-                min = res
-                closed_point = [p.x,p.y] # 가장 가까운 점
-
-
-
-        line_inclination = ((ps[-1].y - ps[0].y) / (ps[-1].x - ps[0].x))
-
-        line_y = line_inclination*closed_point[0] + closed_point[1]
-        line_n = line_inclination*closed_point[0]+line_y
+            else:
+                            
+                self.clusturing_buoy(ps)
+                # self.obstacles.append(ps)
 
 
-        begin_point_angle = ps[0].point_angle_calc()
-        end_point_angle = ps[-1].point_angle_calc()
-
-
-        begin_r =  line_n/(np.sin(begin_point_angle) - line_inclination*np.cos(begin_point_angle))
-        end_r =  line_n/(np.sin(end_point_angle) - line_inclination*np.cos(end_point_angle))
-
-        new_begin_point = [begin_r*np.cos(begin_point_angle),begin_r*np.sin(begin_point_angle)]
-        new_end_point = [end_r*np.cos(end_point_angle),end_r*np.sin(end_point_angle)]
-
-
-        new_buoy_list = [new_begin_point,new_end_point]
-
-        self.buoy_particle.append(new_buoy_list)
-        self.obstacles.append(buoy_particle)
 
     def split_wall(self, ps):
         """Split long groups into short ones
+
         Notes:
             "del wall_particle"
                 -> group_points() 함수 참고
         """
+
         wall_particle = PointSet()
         wall_particle.append_point(ps.begin)
         for p in ps.point_set:
-            if p.dist_btw_points(wall_particle.begin) > self.wall_particle_length:
+            if p.dist_btw_points(wall_particle.begin) > self.wall_particle_length: # 벽의 길이 > 벽 분할할 길이. 즉 한 개의 쭉 이어진 벽으로 설정하기 보다는 분할을 하는 과정이다.
                 self.obstacles.append(wall_particle)
                 del wall_particle
                 wall_particle = PointSet()
             wall_particle.append_point(p)
+
+
+        
         self.obstacles.append(wall_particle)  # last group
 
 
+
+
+    def clusturing_buoy(self, ps):
+
+        buoy_particle = PointSet()
+        buoy_particle.append_point(ps.begin)
+
+        line=[]
+
+        min = 999
+
+        for p in ps.point_set: # 가장 가까운 점을 찾는 구문
+
+            # print("구 시작점",p.x)
+            # print("구 끝점",p.y)
+
+        
+            line.append(p)
+
+
+            res = sqrt(pow(p.y - self.boat_y, 2.0) + pow(p.x - self.boat_x, 2.0))
+
+            if res  < min:
+                min = res
+                closed_point = [p.x,p.y] # 가장 가까운 점
+                
+        # print("-------------------------")
+        # print("제일 가까운 점",closed_point)
+        # print("과거 시작점",line[0].x,line[0].y)
+        # print("과거 끝점",line[-1].x,line[-1].y)
+    
+        line_inclination = ((line[-1].y - line[0].y) / (line[-1].x - line[0].x)) # 장애물의 시작점과 끝점의 기울기를 구한다.
+
+        # print("시작점 끝점 기울기",line_inclination)
+
+        new_line_y = -1*line_inclination*closed_point[0] + closed_point[1]  # ex y=-x+2 면 2
+        # print("새로운 선의 y값line_y",new_line_y)
+
+        begin_point_inclination = (line[0].y)/(line[0].x) #시작점의 기울기
+        end_point_inclination = (line[-1].y)/(line[-1].x) #끝점의 기울기
+
+        # print("시작점의 기울기",begin_point_inclination)
+        # print("끝점의 기울기",end_point_inclination)
+
+        new_begin_point_x = ((-new_line_y)/(line_inclination-begin_point_inclination)) #교차 시작점의 x
+        new_begin_point_y = ((line_inclination)*(-new_line_y)/(line_inclination-begin_point_inclination) + new_line_y) #교차 시작점의 y
+
+        new_end_point_x = ((-new_line_y)/(line_inclination-end_point_inclination)) # 교차 끝점의 x
+        new_end_point_y = ((line_inclination)*(-new_line_y)/(line_inclination-end_point_inclination) + new_line_y) #교차 끝점의 y
+
+        new_begin_point = (new_begin_point_x,new_begin_point_y)
+        new_end_point = (new_end_point_x,new_end_point_y)
+
+
+        # print("새로운 시작점",new_begin_point)
+        # print("새로운 끝점",new_end_point)
+
+        
+        new_buoy_list= [new_begin_point, new_end_point] # 교차되는 점들을 새로운 리스트에 담는다
+
+        # print(new_buoy_list)
+
+        self.buoy_particle.append(new_buoy_list)
+        self.obstacles.append(buoy_particle)
+
+
+        
+
     def publish_obstacles(self):
         """Publish clustering results in (x, y) coordinate format"""
+
         ob_list = ObstacleList()
 
-        for ob in self.obstacles:
+
+        for ob in self.obstacles: # buoy + wall의 장애물 obstacles 들을 전달 msg 타입에 맞춰서 ( ex) Point.begin.x) ob_list에 넣는다
+
+
             obstacle = Obstacle()
             obstacle.begin.x = ob.begin.x
             obstacle.begin.y = ob.begin.y
@@ -311,7 +396,11 @@ class Lidar_Converter:
             obstacle.end.y = ob.end.y
             ob_list.obstacle.append(obstacle)
 
+
+
         self.obstacle_pub.publish(ob_list)
+
+
 
     def publish_rviz(self):
         ids = list(range(0, 100))
@@ -351,7 +440,7 @@ class Lidar_Converter:
 
 def main():
     rospy.init_node("LidarConverter", anonymous=False)
-    lidar_converter = Lidar_Converter()
+    Lidar_Converter()
     rate = rospy.Rate(10)
 
     while not rospy.is_shutdown():
