@@ -10,12 +10,12 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 import rospy
 import math
 from collections import deque # obstacle 부분에서 deque 자료구조 쓸 때 사용하는 거
-import utils.show as sh # 은기가 만들어 놓은 marker 따오는 거
+import utils.show as sh 
 from nav_msgs.msg import Path
 from std_msgs.msg import Float64, Bool
 from geometry_msgs.msg import PointStamped, Point, Vector3, PoseStamped, PolygonStamped, Point32, Polygon
-from visualization_msgs.msg import Marker, MarkerArray 
-from tricat231_pkg.msg import ObstacleList, polygonArray
+from visualization_msgs.msg import MarkerArray
+from tricat231_pkg.msg import ObstacleList
 import utils.gnss_converter as gc # gnss converter인데 이거 안쓰고 total,total_hyo에서 받아오고 싶은데
 import numpy as np
 from math import sin, cos, pi
