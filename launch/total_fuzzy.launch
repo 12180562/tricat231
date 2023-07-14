@@ -24,9 +24,17 @@
 	<!-- Nodes -->
 	<node pkg="tricat231_pkg"  type="heading_converter.py" name="headingConverter" respawn="true"/>
     <node pkg="tricat231_pkg" type="gnss_converter.py" name="GnssConverter" respawn="true" output="screen"/>
-	<!-- <node pkg="tricat231_pkg" type="lidar_clustering.py" name="LidarCluster" args="/dev/rplidar" respawn="true"/> -->
-	<node pkg="tricat231_pkg" type="fuzzy.py" name="fuzzy" output="screen"/>
-	<node pkg="tricat231_pkg" type="serial_node.py" name="ARDUINO" args="/dev/ttyACM1" respawn="true"/>
+	<!-- <node pkg="tricat231_pkg" type="lidar_test.py" name="LidarCluster" args="/dev/rplidar" respawn="true"/> -->
+<<<<<<< HEAD:launch/total.launch
+	<node pkg="tricat231_pkg" type="total.py" name="Total" output="screen"/>
+	<node pkg="tricat231_pkg" type="visual.py" name="visual" respawn="true"/>
+	<node pkg="rviz" type="rviz" name="visual_rviz" args="-d $(find tricat231_pkg)/rviz/tricat231.rviz"/>
+=======
+	<node pkg="tricat231_pkg" type="total_fuzzy.py" name="TotalFuzzy" output="screen"/>
+	<!-- <node pkg="tricat231_pkg" type="visual.py" name="visual" respawn="true"/> -->
+	<!-- <node pkg="rviz" type="rviz" name="visual_rviz" args="-d $(find tricat231_pkg)/rviz/tricat231.rviz"/> -->
+>>>>>>> 0954d496f95095214a617c9067158aefa1c90084:launch/total_fuzzy.launch
+	<node pkg="tricat231_pkg" type="serial_node.py" name="ARDUINO" args="/dev/ttyARDUINO" respawn="true"/>
 
 	<!-- Record -->
 	<arg name="do_record" default="false" />

@@ -17,7 +17,7 @@ from tricat231_pkg.msg import ObstacleList
 
 from utils import gnss_converter as gc
 
-class Total:
+class Total_Fuzzy:
     def __init__(self):
         #Goal
         self.remained_waypoint = []
@@ -51,7 +51,6 @@ class Total:
         #PID Control
         self.errSum=0
         self.kp_servo = rospy.get_param("kp_servo")
-        self.ki_servo = rospy.get_param("ki_servo")
         self.kd_servo = rospy.get_param("kd_servo")
         
         #Lidar
@@ -64,14 +63,19 @@ class Total:
 
         #ROS
         self.yaw_rate_sub = rospy.Subscriber("/imu/data", Imu, self.yaw_rate_callback)
-        self.heading_sub = rospy.Subscriber("/heading",Float64,self.heading_callback)
-        self.enu_position_sub = rospy.Subscriber("/enu_position",Point,self.boat_position_callback)
+        self.heading_sub = rospy.Subscriber("/heading", Float64, self.heading_callback, queue_size=1)
+        self.enu_position_sub = rospy.Subscriber("/enu_position", Point, self.boat_position_callback, queue_size=1)
         self.lidar_sub = rospy.Subscriber("/scan", LaserScan, self.lidar_callback, queue_size=1)
         self.obstacle_sub = rospy.Subscriber("/obstacles", ObstacleList, self.obstacle_callback, queue_size=1)
 
+<<<<<<< HEAD:src/total.py
         self.servo_pub = rospy.Publisher("/servo",UInt16, queue_size=0)
         self.thruster_pub = rospy.Publisher("/thruster",UInt16, queue_size=0)
         self.end_pub = rospy.Publisher("/end_check",Bool, queue_size=10)
+=======
+        self.servo_pub = rospy.Publisher("/servo", UInt16, queue_size=0)
+        self.thruster_pub = rospy.Publisher("/thruster", UInt16, queue_size=0)
+>>>>>>> 0954d496f95095214a617c9067158aefa1c90084:src/total/total_fuzzy.py
 
         #Initializing
         self.cal_distance_goal()
@@ -85,20 +89,32 @@ class Total:
     def yaw_rate_callback(self, msg):
         self.yaw_rate = msg.angular_velocity.z 
 
-    def heading_callback(self,msg):
-            self.psi=msg.data
+    def heading_callback(self, msg):
+        self.psi = msg.data
 
-    def boat_position_callback(self,msg):
-            self.boat_y=msg.x
-            self.boat_x=msg.y
+    def boat_position_callback(self, msg):
+        self.boat_y = msg.x
+        self.boat_x = msg.y
+
+    def obstacle_callback(self, msg):
+        self.obstacles = msg.obstacle
 
     def lidar_callback(self, data):
         self.angle_min = data.angle_min
         self.angle_increment = data.angle_increment
         self.ranges = data.ranges
 
-    def obstacle_callback(self, msg):
-        self.obstacles = msg.obstacle
+    def is_all_connected(self):
+        rospy.wait_for_message("/heading", Float64)
+        print("\n{:><70}".format("heading_calculator Connected "))
+        rospy.wait_for_message("/enu_position", Point)
+        print("\n{:><70}".format("gnss_converter Connected "))
+        rospy.wait_for_message("/obstacles", ObstacleList)
+        print("\n{:><70}".format("lidar_converter Connected "))
+        rospy.wait_for_message("/scan", LaserScan)
+        print("\n{:><70}".format("LiDAR Connected "))
+
+        return True
 
     def cal_distance_goal(self):
             self.distance_goal=math.hypot(self.boat_x-self.goal_x,self.boat_y-self.goal_y)
@@ -124,10 +140,10 @@ class Total:
         return output_angle
     
     def servo_pid_controller(self):
-        error_angle = self.cal_err_angle()  # P ctrl
+        error_angle = self.cal_err_angle()
         cp_servo = self.kp_servo * error_angle
 
-        yaw_rate = math.degrees(self.yaw_rate)  # D ctrl
+        yaw_rate = math.degrees(self.yaw_rate)
         cd_servo = self.kd_servo * (-yaw_rate)
 
         servo_pd = -(cp_servo + cd_servo)
@@ -212,18 +228,9 @@ class Total:
         
         self.target_servo_ang = ctrl.ControlSystemSimulation(target_servo_ctrl)
     
-    # Avoidance algorithm using fuzzy theory
     def fuzzy_control_avoidance(self):
-        '''
-        return
-            True: 장애물이 탐지 범위(각, 거리) 안에 있음, 지역경로계획(LPP : Local Path-Planning)
-            False: 그 외, 전역경로계획(GPP :Global Path-Planning)
-        '''
-        
-        # 라이다 콜백 함수와 겹쳐 현재 탐색 중인 데이터가 아닌 방금 들어온 데이터를 쓸 위험이 있음. 따라서 탐색 중인 데이터를 따로 제작
         self.danger_ob = {}
 
-        # opt 각도 범위 내 값들만 골라냄 (라이다 raw 기준(z축 inverted) -70도는 )
         start_idx = int((math.radians(110)) / (self.angle_increment + 0.00001))
         end_idx = int((math.radians(250)) / (self.angle_increment + 0.00001))
         ranges = self.ranges[start_idx : (end_idx + 1)]
@@ -231,20 +238,14 @@ class Total:
         if ranges == [] or min(ranges) == float("inf"):
             return False
 
-        closest_distance = min(ranges)  # 가장 가까운 장애물까지 거리
+        closest_distance = min(ranges)
 
         self.clo=closest_distance
 
-        idx = ranges.index(closest_distance) + start_idx  # 가장 가까운 장애물의 인덱스
-        # pi = -math.degrees(angle_min + angle_increment * idx) + 180
+        idx = ranges.index(closest_distance) + start_idx
         pi = math.degrees(self.angle_min + self.angle_increment * idx)
 
-        # If angle is over 180 deg or under -180 deg, rearrange it
-        
-        # lidar는 후방이 0 -> 왼쪽으로 돌아 전방이 180 -> 후방이 360
-        # pi = self.rearrange_angle(pi)
-
-        if (0.3 <= closest_distance <= 2.8) and (-70 <= pi <= 70): # 장애물이 배로부터 2.8m 이하로 있고, 각도가 좌우 70도 이내일 때
+        if (0.3 <= closest_distance <= 2.8) and (-70 <= pi <= 70):
             self.target_servo_ang.input["distance"] = float(closest_distance)
             self.target_servo_ang.input["angle"] = float(pi)
             self.target_servo_ang.compute()
@@ -257,66 +258,77 @@ class Total:
             return True
         else:
             return False
-
+        
+    def print_state(self):
+        print(f"------------------------------------\n \
+            lpp : {self.fuzzy_control_avoidance()}\n \
+            distance, thruster : {self.distance_goal}, {self.u_thruster}\n \
+            my xy : {self.boat_x}, {self.boat_y}\n \
+            goal xy : {self.goal_x}, {self.goal_y}\n \
+            psi, desire : {self.psi}, {self.psi_desire}\n \
+            servo : {self.servo_pid_controller()-93}\n \
+            range : {self.clo}\n \
+            target rule : {self.fuzzy_servo_control}")
+        
 def main():
-    rospy.init_node("Total")
+    rospy.init_node("Total_Fuzzy", anonymous=False)
     rate = rospy.Rate(10) # 10 Hz
-    total = Total()
 
-    total.fuzzy() 
+    total_fuzzy = Total_Fuzzy()
+    total_fuzzy.fuzzy() 
+
     count = 0
 
+    while not total_fuzzy.is_all_connected():
+        rospy.sleep(0.2)
+        print("\n{:<>70}".format(" All Connected !"))
+
     while not rospy.is_shutdown():
+        total_fuzzy.print_state()
 
-        is_lpp = total.fuzzy_control_avoidance()
+        is_lpp = total_fuzzy.fuzzy_control_avoidance()
         if is_lpp:
-            total.u_servo = total.servo_middle + total.fuzzy_servo_control
+            total_fuzzy.u_servo = total_fuzzy.servo_middle + total_fuzzy.fuzzy_servo_control
         else:
-            total.u_servo = total.servo_pid_controller()
+            total_fuzzy.u_servo = total_fuzzy.servo_pid_controller()
 
+<<<<<<< HEAD:src/total.py
         if total.end_check():
             total.end_pub.publish(True)
             total.next()
+=======
+        if total_fuzzy.end_check():
+            total_fuzzy.next()
+>>>>>>> 0954d496f95095214a617c9067158aefa1c90084:src/total/total_fuzzy.py
             count+=1
             print("arrive")
-            # 3초 지연 코드 필요
+            rospy.sleep(3)
         else:
             total.end_pub.publish(False)
             pass
- 
 
         if count == 0:
-            total.servo_pub.publish(total.u_servo)
+            total_fuzzy.servo_pub.publish(total_fuzzy.u_servo)
         
         if count == 1:
             print("11111111111")
             # 카메라 켜기
-            total.servo_pub.publish(total.u_servo)
-            # total.thruster_pub.publish(int(total.u_thruster))
+            total_fuzzy.servo_pub.publish(total_fuzzy.u_servo)
+            total_fuzzy.thruster_pub.publish(total_fuzzy.u_thruster)
         if count == 2:
             print("2222222222222")
             # 카메라 끄기
-            total.servo_pub.publish(total.u_servo)
-            # total.thruster_pub.publish(int(total.u_thruster))
+            total_fuzzy.servo_pub.publish(total_fuzzy.u_servo)
+            total_fuzzy.thruster_pub.publish(total_fuzzy.u_thruster)
         if count == 3:
             print("33333333333333333")
-            total.servo_pub.publish(total.u_servo)
-            # total.thruster_pub.publish(1500)
+            total_fuzzy.servo_pub.publish(total_fuzzy.servo_middle)
+            total_fuzzy.thruster_pub.publish(1500)
             print("-------------Finished---------------")
-
-        print(f"------------------------------------\n \
-              lpp : {total.fuzzy_control_avoidance()}\n \
-              distance, thruster : {total.distance_goal}, {total.u_thruster}\n \
-              my xy : {total.boat_x}, {total.boat_y}\n \
-              goal xy : {total.goal_x}, {total.goal_y}\n \
-              psi, desire : {total.psi}, {total.psi_desire}\n \
-              servo : {total.servo_pid_controller()-93}\n \
-              range : {total.clo}\n \
-              target rule : {total.fuzzy_servo_control}")
         
         rate.sleep()
 
     rospy.spin()
 
-if __name__=="__main__":
+if __name__ == "__main__":
     main()
