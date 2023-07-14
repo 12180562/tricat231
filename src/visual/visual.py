@@ -1,57 +1,78 @@
 #!/usr/bin/env python
 #-*- coding:utf-8 -*-
 
+#----- 파일 경로 찾는 부분----------------------------------------------------------------------------------------------------------------------#
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+#--------------------------------------------------------------------------------------------------------------------------------------------#
 
 import rospy
 import math
-from collections import deque
-import utils.show as sh
+from collections import deque # obstacle 부분에서 deque 자료구조 쓸 때 사용하는 거
+import utils.show as sh # 은기가 만들어 놓은 marker 따오는 거
 from nav_msgs.msg import Path
-from std_msgs.msg import Float64
-from geometry_msgs.msg import PointStamped, Point, Vector3, PoseStamped, PolygonStamped, Point32
+from std_msgs.msg import Float64, Bool
+from geometry_msgs.msg import PointStamped, Point, Vector3, PoseStamped, PolygonStamped, Point32, Polygon
 from visualization_msgs.msg import Marker, MarkerArray 
-from tricat231_pkg.msg import ObstacleList
-import utils.gnss_converter as gc
-from math import sin, cos, pi
+from tricat231_pkg.msg import ObstacleList, polygonArray
+import utils.gnss_converter as gc # gnss converter인데 이거 안쓰고 total,total_hyo에서 받아오고 싶은데
 import numpy as np
+from math import sin, cos, pi
 # from urdf_parser_py.urdf import URDF
 
+# ----- 경기장----------------------------------------------------------------------------------------------------------------------#
 class map_rviz:
     def __init__(self):
-        self.frame_id = "/map"
-        # waypoint
-        self.remained_waypoint = []
+
+        # Waypoint
+        # Get waypoint, goal range param
         gnss_waypoint = rospy.get_param("waypoints")
+        goal_range = rospy.get_param("goal_range")
+
+        # 분수대 오른쪽1(구글 어스 위도, 경도): 37.4483338, 126.6537511 // -254.9589107162451, 74.11673378428729
+        # 분수대 오른쪽2(구글 어스 위도, 경도): 37.4487297, 126.6539784 // -211.01897805798822, 94.22933843885015
+        # 분수대 왼쪽1(구글 어스 위도, 경도): 37.4483338, 126.6537511  // -254.95887062301057, 74.1167221783096
+        self.bsd = sh.Square_polygon(-254.9589107162451, 74.11673378428729)
+        self.pub_bsd = rospy.Publisher("/bsd", PolygonStamped, queue_size=10)
+
+        # Waypoint
+        self.remained_polygon = []
         for waypoint in gnss_waypoint:
             n,e,_ = gc.enu_convert(waypoint)
-            enu_waypoint = [n, e]
-            self.remained_waypoint.append(enu_waypoint)
-        self.goal_range = rospy.get_param("goal_range")
-
-        rospy.init_node("polygon_array_sample")
-        self.pub_waypoint = rospy.Publisher("/waypoint", PolygonStamped, queue_size=10)
-
-    def CirclePolygon(self, num):
-        p = PolygonStamped()
-        for i in range(100):
-            theta = i / 100.0 * 2.0 * pi
-            x = self.goal_range * cos(theta) + self.remained_waypoint[num][0]
-            y = self.goal_range * sin(theta) + self.remained_waypoint[num][1]
-            p.polygon.points.append(Point32(x=x, y=y))
-        return p
+            self.remained_polygon.append(sh.Circle_polygon([n, e], goal_range))
+        
+        self.end_sub = rospy.Subscriber("/end_check", Bool, self.end_callback, queue_size=10)
+        self.end = False
+        self.pub_waypoint1 = rospy.Publisher("/waypoint1", PolygonStamped, queue_size=10)
+        self.pub_waypoint2 = rospy.Publisher("/waypoint2", PolygonStamped, queue_size=10)
+        self.pub_waypoint3 = rospy.Publisher("/waypoint3", PolygonStamped, queue_size=10)
     
     def publish_waypoint(self):
-        num = list(range(0,2))
-        waypoint = []
-        for i in num:
-            waypoint[i] = self.CirclePolygon(i)
-        waypoint.header.frame_id = self.frame_id
-        waypoint.header.stamp = rospy.Time.now()
-        self.pub_waypoint.publish(waypoint)   
+        cnt = 0
+        if self.end:
+            cnt += 1
+        if cnt < 1:
+            self.pub_waypoint1.publish(self.remained_polygon[0])
+            self.pub_waypoint2.publish(self.remained_polygon[1])
+            self.pub_waypoint3.publish(self.remained_polygon[2])
+        elif cnt == 1:
+            self.pub_waypoint2.publish(self.remained_polygon[1])
+            self.pub_waypoint3.publish(self.remained_polygon[2])
+        elif cnt == 2:
+            self.pub_waypoint3.publish(self.remained_polygon[2])
+        else:
+            print("Finish")
+    
+    def publish_map(self):
+        self.pub_bsd.publish(self.bsd)
 
+    def end_callback(self, msg):
+        self.end = msg.data
+    
+#--------------------------------------------------------------------------------------------------------------------------------------------#
+
+# ----- Lidar 시각화----------------------------------------------------------------------------------------------------------------------#
 class obstacle_rviz:
     def __init__(self):
         self.threshold = 1000
@@ -81,7 +102,9 @@ class obstacle_rviz:
         obstacle = self.osbtacle_rviz()
         markers = sh.marker_array_rviz([obstacle])
         self.rviz_pub.publish(markers)
- 
+#--------------------------------------------------------------------------------------------------------------------------------------------#
+
+# ----- 배 관련 시각화(position, heading, trajectory)--------------------------------------------------------------------------------------------#
 class boat_rviz:
     def __init__(self):
         # self.boat_model = "boat231.urdf"
@@ -93,7 +116,7 @@ class boat_rviz:
         self.goal_trajectory = Path()
         self.previous_position = Point()
 
-        self.frame_id = "/map"
+        self.frame_id = "map"
         self.threshold = 0.001
         self.max_poses = 1000
 
@@ -115,9 +138,10 @@ class boat_rviz:
         self.psi = msg.data
 
     def heading_rviz(self):
+        length = 1
         ids = list(range(1, 100))
-        psi_arrow_end_x = 2 * math.cos(math.radians(self.psi)) + self.boat_x
-        psi_arrow_end_y = 2 * math.sin(math.radians(self.psi)) + self.boat_y
+        psi_arrow_end_x = length * math.cos(math.radians(self.psi)) + self.boat_x
+        psi_arrow_end_y = length * math.sin(math.radians(self.psi)) + self.boat_y
         psi = sh.arrow_rviz(
             name="psi",
             id=ids.pop(),
@@ -163,7 +187,7 @@ class boat_rviz:
                 self.boat_trajectory.poses.append(pose_stamped)
             self.previous_position = pose_stamped.pose.position
             self.boat_trajectory_pub.publish(self.boat_trajectory)
-
+#--------------------------------------------------------------------------------------------------------------------------------------------#
 
 def main():
     rospy.init_node('visual')
@@ -172,15 +196,18 @@ def main():
     map = map_rviz()
 
     rate = rospy.Rate(10) # 10Hz
-    while not rospy.is_shutdown():
-        
-        boat.publish_heading()
-        boat.publish_trajectory()
-        boat.publish_boat_position()
-        obstacle.publish_obstacle()
-        map.publish_waypoint()
-        rate.sleep()
-
+    try:
+        while not rospy.is_shutdown():
+            
+            boat.publish_heading()
+            boat.publish_trajectory()
+            boat.publish_boat_position()
+            obstacle.publish_obstacle()
+            map.publish_waypoint()
+            map.publish_map()
+            rate.sleep()
+    except rospy.ROSInterruptException:
+        pass
 
 if __name__ == '__main__':
     main()

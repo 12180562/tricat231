@@ -5,13 +5,15 @@
 
 import os
 import sys
-
-from geometry_msgs.msg import Point, Vector3
+import rospy
+from geometry_msgs.msg import Point, Point32, Vector3, PolygonStamped
 from std_msgs.msg import ColorRGBA
 from visualization_msgs.msg import Marker, MarkerArray
+from math import sin, cos, pi
 
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
+# Marker
 
 def basic_setting(name, id, color_r, color_g, color_b, color_a=255):
     """make Marker object with basic settings
@@ -46,7 +48,7 @@ def del_mark(name, id):
         marker (Marker): Marker object to delete
     """
     marker = Marker()
-    marker.header.frame_id = "/map"
+    marker.header.frame_id = "map"
     marker.ns = name
     marker.id = id
     marker.action = Marker.DELETE
@@ -197,3 +199,55 @@ def marker_array_append_rviz(marker_array, marker):
     marker_array.markers.append(marker)
 
     return marker_array
+
+
+# Polygon
+
+# def circle_polygon(header, center, radius):
+#     """
+#     centers는 원의 중심으로 리스트 형태로 [x, y]와 같이 넣어줘야 함
+#     """
+#     polygon = PolygonStamped()
+#     polygon.header = header
+
+#     num_points = 20  # 원을 근사하기 위해 사용할 점의 개수
+
+#     for i in range(num_points):
+#         angle = float(i) / num_points * 2 * pi
+#         point = Point32()
+#         point.x = center[0] + radius * cos(angle)
+#         point.y = center[1] + radius * sin(angle)
+#         point.z = 0.0
+#         polygon.polygon.points.append(point)
+
+#     return polygon
+
+def Circle_polygon(center, radius):
+    """
+    centers는 원의 중심으로 리스트 형태로 [x, y]와 같이 넣어줘야 함
+    """
+    polygon = PolygonStamped()
+    polygon.header.frame_id = "map"
+    polygon.header.stamp = rospy.Time.now()
+
+    num_points = 20  # 원을 근사하기 위해 사용할 점의 개수
+
+    for i in range(num_points):
+        angle = float(i) / num_points * 2 * pi
+        point = Point32()
+        point.x = center[0] + radius * cos(angle)
+        point.y = center[1] + radius * sin(angle)
+        point.z = 0.0
+        polygon.polygon.points.append(point)
+
+    return polygon
+
+def Square_polygon(n, e):
+    polygon = PolygonStamped()
+    polygon.header.frame_id = "map"
+    polygon.header.stamp = rospy.Time.now()
+    polygon.polygon.points = [Point32(x=n, y=e),
+                            Point32(x=n+43, y=e),
+                            Point32(x=n+43, y=e+20),
+                            Point32(x=n, y=e+20)]
+    return polygon

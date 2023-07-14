@@ -11,7 +11,7 @@ import skfuzzy as fuzz
 from skfuzzy import control as ctrl
 
 from geometry_msgs.msg import Point
-from std_msgs.msg import Float64, UInt16
+from std_msgs.msg import Float64, UInt16, Bool
 from sensor_msgs.msg import Imu, LaserScan
 from tricat231_pkg.msg import ObstacleList
 
@@ -71,6 +71,7 @@ class Total:
 
         self.servo_pub = rospy.Publisher("/servo",UInt16, queue_size=0)
         self.thruster_pub = rospy.Publisher("/thruster",UInt16, queue_size=0)
+        self.end_pub = rospy.Publisher("/end_check",Bool, queue_size=10)
 
         #Initializing
         self.cal_distance_goal()
@@ -274,11 +275,13 @@ def main():
             total.u_servo = total.servo_pid_controller()
 
         if total.end_check():
+            total.end_pub.publish(True)
             total.next()
             count+=1
             print("arrive")
             # 3초 지연 코드 필요
         else:
+            total.end_pub.publish(False)
             pass
  
 

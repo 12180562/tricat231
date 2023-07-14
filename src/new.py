@@ -1,22 +1,20 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 
-import rospy
-from std_msgs.msg import UInt16
+import utils.gnss_converter as gc
 
 def main():
-    rospy.init_node("Total")
-    rate = rospy.Rate(10) # 10 Hz
-    servo_pub = rospy.Publisher("/servo",UInt16, queue_size=0)
-    while not rospy.is_shutdown():
-        servo_pub.publish(93)
-        for i in range(78, 113):
-            servo_pub.publish(i)
-        rate.sleep()
+    map_waypoint = [[37.4483338, 126.6537511, 50.0],[37.4487297, 126.6539784, 50.0], [37.4483338, 126.6537511, 49.0]]
+    waypoint_check = []
     
-    rospy.spin()
+    for waypoint in map_waypoint:
+            n,e,_ = gc.enu_convert(waypoint)
+            waypoint_check.append([n,e])
 
+    print(waypoint_check)
 
-
-if __name__=="__main__":
+if __name__ == '__main__':
     main()
+
+
+
