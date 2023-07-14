@@ -28,9 +28,9 @@
     <node pkg="tricat231_pkg" type="gnss_converter.py" name="GnssConverter" respawn="true" output="screen"/>
 	<node pkg="tricat231_pkg" type="lidar_clustering.py" name="LidarCluster" args="/dev/rplidar" respawn="true"/>
 	<node pkg="tricat231_pkg" type="total_static.py" name="TotalStatic" output="screen"/>
-	<!-- <node pkg="tricat231_pkg" type="visual.py" name="visual" respawn="true"/> -->
-	<!-- <node pkg="rviz" type="rviz" name="visual_rviz" args="-d $(find tricat231_pkg)/rviz/tricat231.rviz"/> -->
-	<node pkg="tricat231_pkg" type="serial_node.py" name="ARDUINO" args="/dev/ttyARDUINO" respawn="true"/>
+	<node pkg="tricat231_pkg" type="visual.py" name="visual" respawn="true"/>
+	<node pkg="rviz" type="rviz" name="visual_rviz" args="-d $(find tricat231_pkg)/rviz/tricat231.rviz"/>
+	<!-- <node pkg="tricat231_pkg" type="serial_node.py" name="ARDUINO" args="/dev/ttyARDUINO" respawn="true"/> -->
 
 	<!-- Record -->
 	<arg name="do_record" default="false" />
