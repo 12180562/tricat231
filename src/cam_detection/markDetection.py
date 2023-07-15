@@ -68,6 +68,28 @@ def find_area_centroid(contour):
 #        print('중심점계산오류')
         return None, None
 
+def image_preprocessing(cam): 
+    # 영상 이미지 전처리 함수
+    raw_image = cam
+    img0 = mean_brightness(raw_image) # 평균 밝기로 보정하는 함수
+    img = cv.GaussianBlur(img0, (5, 5), 0) # 가우시안 필터 적용 # (n,n) : 가우시안 필터의 표준편차. 조정하면서 해야 함
+    hsv_image = cv.cvtColor(img, cv.COLOR_BGR2HSV) # BGR 형식의 이미지를 HSV 형식으로 전환
+    return hsv_image
+
+def show_the_shape_contour(hsv_image,detecting_color):
+    # 탐지 범위에 따른 마스크 형성 및 외곽선 검출하는 함수   
+    mask = color_filtering(detecting_color, hsv_image)
+    contours, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE) # 컨투어 검출
+    contours = np.array(contours)
+#    contours = contours.astype(np.float)
+    return contours
+
+def show_the_shape_info(raw_image, detecting_shape,contours) :
+    contour_info, raw_image = shape_and_label(detecting_shape, raw_image, contours)
+#    cv.imshow("CONTROLLER", raw_image)
+    servo_angle, thruster_value = move_with_largest(contour_info, raw_image.shape[1]) # return : servo, thruster
+    return raw_image, servo_angle, thruster_value
+
 
 def move_with_largest(contour_info, raw_image_width):
     # 제일 큰 도형 선택
@@ -76,33 +98,48 @@ def move_with_largest(contour_info, raw_image_width):
 #    print("Contour Info After Filtering:", contour_info)  # Print contour_info after filtering
     Limage_limit = raw_image_width / 2 - 10
     Rimage_limit = raw_image_width / 2 + 10
-
+    servo = 93
+    thruster = 50 # thruster_mid
     if len(contour_info) > 0: # contour에 area, center가 입력되었을 때 ( 도형이 1개 이상 인식되었을 때 )
         contour_info.sort(key=lambda x: x[0], reverse=True)  # 도형 면적 기준으로 area, center 내림차순 정렬
         largest_contour = contour_info[0] # 제일 큰 도형 선택
         # 제일 큰 도형에 대한 연산 수행
         largest_area, largest_center = largest_contour
         centroid_x = largest_center[0]
-        a = 2 # 도형 크기 비 (직진 여부 확인용)
+        a = 5 # 도형 크기 비 (직진 여부 확인용)
         largest_width = largest_area  # 도형의 가로 길이를 largest_area로 간주
-        if centroid_x < Limage_limit and largest_width < raw_image_width / a: # center의 x좌표가 화면 절반보다 왼쪽에 있을 때 : 왼쪽으로 회전
-            print(centroid_x, Limage_limit, largest_width, raw_image_width, "Move Left")
-            print(contour_info)
-        elif centroid_x > Rimage_limit and largest_width < raw_image_width / a: # center의 x좌표가 화면 절반보다 오른쪽에 있을 때 : 오른쪽으로 회전
-            print(centroid_x, Limage_limit, largest_width, raw_image_width, "Move Right")
-            print(contour_info)
+
+        if centroid_x < Limage_limit :
+        # and largest_width < raw_image_width / a: # center의 x좌표가 화면 절반보다 왼쪽에 있을 때 : 왼쪽으로 회전
+        #    print(centroid_x, Limage_limit, largest_width, raw_image_width, "Move Left")
+        #    print(contour_info)
+            print("Left")
+            servo = 81
+
+        elif centroid_x > Rimage_limit :
+        # and largest_width < raw_image_width / a: # center의 x좌표가 화면 절반보다 오른쪽에 있을 때 : 오른쪽으로 회전
+        #    print(centroid_x, Limage_limit, largest_width, raw_image_width, "Move Right")
+        #    print(contour_info)
+            print("Right")
+            servo = 105
+
         elif Limage_limit < centroid_x < Rimage_limit and largest_width < raw_image_width / a :
             print("Move Front")
+            servo = 93
+            thruster = 100 # thruster_max
         elif Limage_limit < centroid_x < Rimage_limit and largest_width > raw_image_width / a :
             print("STOP")
-        elif centroid_x < Limage_limit and largest_width > raw_image_width / a :
-            print("case1")
-        elif centroid_x > Rimage_limit and largest_width > raw_image_width / a :
-            print("case2") 
-        else :
-            print("뭘까이상황은")
+            servo = 93
+            thruster = 30 # thruster_min
+        ## 예외case
+        # elif centroid_x < Limage_limit and largest_width > raw_image_width / a : 
+        #     print("case1")
+        # elif centroid_x > Rimage_limit and largest_width > raw_image_width / a :
+        #     print("case2") 
     else:
         print("No contour found")
+    print("servo : ", servo, "thruster : ", thruster)
+    return servo, thruster
 #    print(contour_info)  # Print contour_info for debugging
 
 def mean_brightness(img):
