@@ -239,12 +239,13 @@ class Lidar_Converter:
         If not, just append it to final clustering list ("obstacles")
         """
         for ps in self.point_sets_list:
-            if ps.dist_begin_to_end() > self.min_wall_length: # points_sets_list의 길이 즉 장애물의 길이  >  벽이라고 인정할 최소 길이 
+            if ps.dist_begin_to_end() > self.min_wall_length: # points_sets_list의 길이 즉 장애물의 길이  >  벽이라고 인정할 최소 길이
+                 
                 self.split_wall(ps)
                 # self.obstacles.append(ps)
             else:
-                # self.clusturing_buoy(ps)
-                self.obstacles.append(ps)
+                self.clusturing_buoy(ps)
+                # self.obstacles.append(ps)
 
     def split_wall(self, ps):
         """Split long groups into short ones
@@ -265,35 +266,43 @@ class Lidar_Converter:
 
     def clusturing_buoy(self, ps):
         buoy_particle = PointSet()
-        buoy_particle.append_point(ps.begin)
+        
 
-        line=[]
+    
 
         min = 999
 
         for p in ps.point_set: # 가장 가까운 점을 찾는 구문
             # print("구 시작점",p.x)
             # print("구 끝점",p.y)
-            line.append(p)
+
+            buoy_particle.append_point(p)
+            
             res = sqrt(pow(p.y - self.boat_y, 2.0) + pow(p.x - self.boat_x, 2.0))
 
             if res  < min:
                 min = res
                 closed_point = [p.x,p.y] # 가장 가까운 점
-        # print("-------------------------")
-        # print("제일 가까운 점",closed_point)
-        # print("과거 시작점",line[0].x,line[0].y)
-        # print("과거 끝점",line[-1].x,line[-1].y)
-    
-        line_inclination = ((line[-1].y - line[0].y) / (line[-1].x - line[0].x)) # 장애물의 시작점과 끝점의 기울기를 구한다.
 
-        # print("시작점 끝점 기울기",line_inclination)
+        # for p in ps.point_set:
+            
+        #     if p%2 == 0:
+        #         print(ps.point_set.begin[p].x)
+        #     else:
+        #         print(ps.point_set.end[p].x)
+                
+
+       
+    
+        line_inclination = (ps.point_set[-1].y - ps.point_set[0].y) / (ps.point_set[-1].x - ps.point_set[0].x+0.00000000000000001) # 장애물의 시작점과 끝점의 기울기를 구한다.
+
+        
 
         new_line_y = -1*line_inclination*closed_point[0] + closed_point[1]  # ex y=-x+2 면 2
         # print("새로운 선의 y값line_y",new_line_y)
 
-        begin_point_inclination = (line[0].y)/(line[0].x) #시작점의 기울기
-        end_point_inclination = (line[-1].y)/(line[-1].x) #끝점의 기울기
+        begin_point_inclination = (ps.point_set[0].y)/(ps.point_set[0].x) #시작점의 기울기
+        end_point_inclination = (ps.point_set[-1].y)/(ps.point_set[-1].x) #끝점의 기울기
 
         # print("시작점의 기울기",begin_point_inclination)
         # print("끝점의 기울기",end_point_inclination)
@@ -304,17 +313,17 @@ class Lidar_Converter:
         new_end_point_x = ((-new_line_y)/(line_inclination-end_point_inclination)) # 교차 끝점의 x
         new_end_point_y = ((line_inclination)*(-new_line_y)/(line_inclination-end_point_inclination) + new_line_y) #교차 끝점의 y
 
-        new_begin_point = (new_begin_point_x,new_begin_point_y)
-        new_end_point = (new_end_point_x,new_end_point_y)
+        # print(buoy_particle.begin.x)
 
-        # print("새로운 시작점",new_begin_point)
-        # print("새로운 끝점",new_end_point)
 
-        new_buoy_list= [new_begin_point, new_end_point] # 교차되는 점들을 새로운 리스트에 담는다
+        buoy_particle.begin.x = new_begin_point_x
+        buoy_particle.begin.y = new_begin_point_y
+        buoy_particle.end.x = new_end_point_x
+        buoy_particle.end.y = new_end_point_y
 
-        # print(new_buoy_list)
+        # print(buoy_particle.begin.x)
 
-        self.buoy_particle.append(new_buoy_list)
+
         self.obstacles.append(buoy_particle)
 
     def publish_obstacles(self):

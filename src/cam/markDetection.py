@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+#-*- coding:utf-8 -*-
+
 import cv2 as cv
 import numpy as np
 
@@ -17,14 +20,29 @@ def color_filtering(detecting_color, hsv_image):     # 이미지 내 특정 색�
         lower_color2 = np.array([170, 50, 50])
         upper_color2 = np.array([180, 255, 255])
         mask = cv.inRange(hsv_image, lower_color, upper_color) + cv.inRange(hsv_image, lower_color2, upper_color2)
+    else: # J: 예외 처리로 넣었습니다.
+        pass
+
     return mask
 
 def shape_and_label(detecting_shape, raw_image, contours):    # 원하는 도형의 윤곽선 면적과 중심점 찾기, 도형 labelling
     contour_info = []
     for contour in contours:
         approx = cv.approxPolyDP(contour, cv.arcLength(contour, True) * 0.01, True)
+        
+        # cv2.approxPolyDP(curve, epsilon, closed, approxCurve=None) -> approxCurve : 외곽선을 근사화(단순화)
+        #   • curve: 입력 곡선 좌표. numpy.ndarray. shape=(K, 1, 2)
+        #   • epsilon: 근사화 정밀도 조절. 입력 곡선과 근사화 곡선 간의 최대 거리. e.g) cv2.arcLength(curve) * 0.02
+        #   • closed: True를 전달하면 폐곡선으로 인식
+        #   • approxCurve: 근사화된 곡선 좌표. numpy.ndarray. shape=(K', 1, 2)
+
+        # cv2.arcLength(curve, closed) -> retval: 외곽선 길이를 반환
+        #   • curve: 외곽선 좌표. numpy.ndarray. shape=(K, 1, 2)
+        #   • closed: True이면 폐곡선으로 간주
+        #   • retval: 외곽선 길이 
+
         line_num = len(approx)
-        if detecting_shape == 0:  # 원 ### 수정이필요해 ~ㅠ
+        if detecting_shape == 0:  # 원 ### 수정이필요해 ~ㅠ  // J:???
             _, radius = cv.minEnclosingCircle(approx)  # 원으로 근사
             ratio = radius * radius * 3.14  # 해당 넓이와 정원 간의 넓이 비
             if 0.5 < ratio < 2:  # 원에 가까울 때만 필터링
@@ -156,46 +174,6 @@ def setLabel(img, pts, label):
     cv.rectangle(img, pt1, pt2, (0,255,0), 2)
     cv.putText(img, label, (pt1[0], pt1[1]-3), cv.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255))
 
-def test_with_webcam(detecting_color, detecting_shape):
-    """ 웹캠으로 기능 테스트 """
-    """
-    detecting_color : Blue = 1, Green = 2, Red = 3
-    detecting_shape : Circle = 0, Triangle = 3, Rectangle = 4, cross = 12
-    """
 
-    webcam = cv.VideoCapture(2) # 캠 연결된 USB 포트 번호 수정하기
 
-    if not webcam.isOpened(): # 캠이 연결되지 않았을 경우 # true시 캠이 잘 연결되어있음
-        print("Could not open webcam")
-        exit()
-
-    # 카메라에 보이는 이미지가 연결되어 동영상으로 보이는 형태
-    while webcam.isOpened(): 
-        ret, cam = webcam.read() # webcam으로 연결된 정보 읽어오기
-#        cv.imshow('webcam', cam) # webcam 창에 cam 보이기
-        # raw_img = cv.imread(webcam, cv.IMREAD_COLOR)
-        # cv.imshow("RAW_IMG", raw_img)
-
-    # 1. 영상 이미지 전처리
-        raw_image = cam
-        img0 = mean_brightness(raw_image) # 평균 밝기로 보정하는 함수
-        img = cv.GaussianBlur(img0, (5, 5), 0) # 가우시안 필터 적용 # (n,n) : 가우시안 필터의 표준편차. 조정하면서 해야 함
-        hsv_image = cv.cvtColor(img, cv.COLOR_BGR2HSV) # BGR 형식의 이미지를 HSV 형식으로 전환
-
-    # 2. 탐지 색상 범위에 따라 마스크 형성
-        mask = color_filtering(detecting_color, hsv_image)
-
-    # 3. 형성된 마스크에서 외곽선 검출 ( datatype 변경 )
-        contours, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE) # 컨투어 검출
-        contours = np.array(contours)
-    #    contours = contours.astype(np.float)
-        
-        contour_info, raw_image = shape_and_label(detecting_shape, raw_image, contours)
-        cv.imshow("CONTROLLER", raw_image)
-        h,w,c = raw_image.shape # 원본 이미지에서 가로 길이 받아오기
-        move_with_largest(contour_info, w)
-
-        if cv.waitKey(1) & 0xFF == 27: # esc버튼 누르면 창 꺼짐
-            break 
-
-test_with_webcam(3,3)
+ 
