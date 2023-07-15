@@ -15,6 +15,12 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 class Docking :
     def __init__(self):
         
+        self.servo_range = rospy.get_param("servo_range")
+        self.servo_middle = int((self.servo_range[0] + self.servo_range[1]) / 2) 
+
+        self.u_servo = self.servo_middle
+        self.u_thruster = self.thruster_min
+
         self.servo_pub = rospy.Publisher("/servo",UInt16)
         self.thruster_pub = rospy.Publisher("/thruster",UInt16)
         
