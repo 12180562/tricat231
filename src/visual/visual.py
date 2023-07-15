@@ -111,6 +111,7 @@ class boat_rviz:
         self.boat_x = 0.0
         self.boat_y = 0.0
         self.psi = 0
+        self.heading = 0
         
         self.boat_trajectory = Path()
         self.goal_trajectory = Path()
@@ -123,10 +124,12 @@ class boat_rviz:
         #sub
         self.enu_pos_sub = rospy.Subscriber("/enu_position", Point, self.boat_position_callback, queue_size=1)
         self.heading_sub = rospy.Subscriber("/heading", Float64 , self.boat_heading_callback, queue_size=1)
+        self.psi_sub = rospy.Subscriber("/psi_desire", Float64 , self.boat_psi_callback, queue_size=1)
         
         #pub
         self.pub_stamp = rospy.Publisher('/boat_position_rviz', PointStamped, queue_size=10)
         self.boat_heading_rviz_pub = rospy.Publisher('/boat_heading_rviz', MarkerArray, queue_size=10, latch=True)
+        self.boat_psi_rviz_pub = rospy.Publisher('/boat_psi_rviz', MarkerArray, queue_size=10, latch=True)
         self.boat_trajectory_pub = rospy.Publisher('/boat_trajectory_rviz', Path, queue_size=10, latch=True)
 
 
@@ -135,9 +138,12 @@ class boat_rviz:
         self.boat_x = msg.y
 
     def boat_heading_callback(self,msg):
+        self.heading = msg.data
+        
+    def boat_psi_callback(self, msg):
         self.psi = msg.data
 
-    def heading_rviz(self):
+    def psi_rviz(self):
         length = 1
         ids = list(range(1, 100))
         psi_arrow_end_x = length * math.cos(math.radians(self.psi)) + self.boat_x
@@ -149,13 +155,33 @@ class boat_rviz:
             y1=self.boat_y,
             x2=psi_arrow_end_x,
             y2=psi_arrow_end_y,
+            color_r=0,
+            color_g=255,
+            color_b=0,
+        )
+        psi_txt = sh.text_rviz(name="psi_desire", id=5, text="psi_desire", x=psi_arrow_end_x, y=psi_arrow_end_y)
+        psi = sh.marker_array_rviz([psi, psi_txt])
+        
+        return psi
+    
+    def heading_rviz(self):
+        length = 1
+        ids = list(range(1, 100))
+        heading_arrow_end_x = length * math.cos(math.radians(self.heading)) + self.boat_x
+        heading_arrow_end_y = length * math.sin(math.radians(self.heading)) + self.boat_y
+        heading = sh.arrow_rviz(
+            name="psi",
+            id=ids.pop(),
+            x1=self.boat_x,
+            y1=self.boat_y,
+            x2=heading_arrow_end_x,
+            y2=heading_arrow_end_y,
             color_r=221,
             color_g=119,
             color_b=252,
         )
-        psi_txt = sh.text_rviz(name="psi", id=5, text="psi", x=psi_arrow_end_x, y=psi_arrow_end_y)
-        heading = sh.marker_array_rviz([psi, psi_txt])
-
+        heading_txt = sh.text_rviz(name="heading", id=6, text="heading", x=heading_arrow_end_x, y=heading_arrow_end_y)
+        heading = sh.marker_array_rviz([heading, heading_txt])
         return heading
 
     def publish_boat_position(self):
@@ -166,8 +192,10 @@ class boat_rviz:
         self.pub_stamp.publish(boat_point)
 
     def publish_heading(self):
+        psi = self.psi_rviz()
         heading = self.heading_rviz()
         self.boat_heading_rviz_pub.publish(heading)
+        self.boat_psi_rviz_pub.publish(psi)
 
     def publish_trajectory(self):
         if((abs(self.previous_position.x - self.boat_x) > self.threshold) or (abs(self.previous_position.y - self.boat_y) > self.threshold)):

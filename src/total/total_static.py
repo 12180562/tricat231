@@ -32,13 +32,17 @@ class Total_Static:
         self.distance_goal = 0
         
         self.psi_candidate = []
-
+        
         #My Boat
+        self.psi_queue = []  # 헤딩을 필터링할 이동평균필터 큐
         self.psi = 0
+        self.filter_queue_size = rospy.get_param("filter_queue_size")  # 이동평균필터 큐사이즈
         self.yaw_rate = 0
 
         self.boat_x = 0
+        self.boat_x_queue = []  # boat_x을 필터링할 이동평균필터 큐
         self.boat_y = 0
+        self.boat_y_queue = []  # boat_y을 필터링할 이동평균필터 큐
 
         self.servo_range = rospy.get_param("servo_range")
         self.servo_middle = int((self.servo_range[0] + self.servo_range[1]) / 2) 
@@ -67,6 +71,7 @@ class Total_Static:
         # self.lidar_sub = rospy.Subscriber("/scan", LaserScan, self.lidar_callback, queue_size=1)
         self.obstacle_sub = rospy.Subscriber("/obstacles", ObstacleList, self.obstacle_callback, queue_size=1)
 
+        self.psi_pub  = rospy.Publisher("/pis",Float64, queue_size=0)
         self.servo_pub = rospy.Publisher("/servo", UInt16, queue_size=0)
         self.thruster_pub = rospy.Publisher("/thruster", UInt16, queue_size=0)
         
@@ -77,20 +82,34 @@ class Total_Static:
         self.detecting_points = np.zeros([self.angle_number+1,3])
         self.reachableVel_global_all = []
         self.vector_desired = 0
+        self.error_angle = 0
                 
     def yaw_rate_callback(self, msg):
         self.yaw_rate = msg.angular_velocity.z 
 
     def heading_callback(self, msg):
-            self.psi = msg.data
+        self.psi = self.moving_avg_filter(self.psi_queue, self.filter_queue_size, msg.data)
+        # self.psi = msg.data
 
     def boat_position_callback(self, msg):
-            self.boat_y = msg.x
-            self.boat_x = msg.y
+        self.boat_y = self.moving_avg_filter(self.boat_y_queue, self.filter_queue_size, msg.x)
+        self.boat_x = self.moving_avg_filter(self.boat_x_queue, self.filter_queue_size, msg.y)
+        # self.boat_y = msg.x
+        # self.boat_x = msg.y
 
     def obstacle_callback(self, msg):
         self.obstacles = msg.obstacle
+        
+    def psi_publish(self):
+        self.psi_pub.publish(self.psi)
 
+    def moving_avg_filter(self, queue, queue_size, input, use_prev=False):         
+        if not use_prev:
+            if len(queue) >= queue_size:
+                queue.pop(0)
+            queue.append(input)
+        return sum(queue) / float(len(queue))
+    
     # def lidar_callback(self, data):
     #     self.angle_min = data.angle_min
     #     self.angle_increment = data.angle_increment
@@ -135,8 +154,8 @@ class Total_Static:
         return output_angle
     
     def servo_pid_controller(self):
-        error_angle = self.choose_velocity_vector(self.cal_err_angle())
-        cp_servo = self.kp_servo * error_angle
+        self.error_angle = self.choose_velocity_vector(self.cal_err_angle())
+        cp_servo = self.kp_servo * self.error_angle
 
         yaw_rate = math.degrees(self.yaw_rate)
         cd_servo = self.kd_servo * (-yaw_rate)

@@ -107,7 +107,7 @@ Visualization Manager:
       Marker Topic: /obstacles_rviz
       Name: MarkerArray
       Namespaces:
-        {}
+        obstacle: true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -162,6 +162,14 @@ Visualization Manager:
       Topic: /bsd
       Unreliable: false
       Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /boat_psi_rviz
+      Name: MarkerArray
+      Namespaces:
+        psi: true
+      Queue Size: 100
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -190,7 +198,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 104.95817565917969
+      Distance: 81.94001770019531
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -198,17 +206,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -245
-        Y: 74
-        Z: 0
+        X: -3.0544912815093994
+        Y: 56.68491744995117
+        Z: -39.42091751098633
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6703977584838867
+      Pitch: 0.6253979802131653
       Target Frame: <Fixed Frame>
-      Yaw: 4.888584613800049
+      Yaw: 4.758567810058594
     Saved: ~
 Window Geometry:
   Displays:

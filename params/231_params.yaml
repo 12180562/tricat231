@@ -26,4 +26,6 @@ detecting_angle: 30
 
 margin: 5
 
+filter_queue_size: 1000000
+
 # fuzzy
