@@ -65,12 +65,12 @@ class Total_Fuzzy:
         self.yaw_rate_sub = rospy.Subscriber("/imu/data", Imu, self.yaw_rate_callback)
         self.heading_sub = rospy.Subscriber("/heading", Float64, self.heading_callback, queue_size=1)
         self.enu_position_sub = rospy.Subscriber("/enu_position", Point, self.boat_position_callback, queue_size=1)
-        self.lidar_sub = rospy.Subscriber("/scan", LaserScan, self.lidar_callback, queue_size=1)
+        # self.lidar_sub = rospy.Subscriber("/scan", LaserScan, self.lidar_callback, queue_size=1)
         self.obstacle_sub = rospy.Subscriber("/obstacles", ObstacleList, self.obstacle_callback, queue_size=1)
 
         self.servo_pub = rospy.Publisher("/servo",UInt16, queue_size=0)
         self.thruster_pub = rospy.Publisher("/thruster",UInt16, queue_size=0)
-        self.end_pub = rospy.Publisher("/end_check",Bool, queue_size=10)
+        self.end_pub = rospy.Publisher("/end_check", Bool, queue_size=10)
 
         #Initializing
         self.cal_distance_goal()
@@ -287,14 +287,14 @@ def main():
         else:
             total_fuzzy.u_servo = total_fuzzy.servo_pid_controller()
 
-        if total.end_check():
-            total.end_pub.publish(True)
-            total.next()
+        if total_fuzzy.end_check():
+            total_fuzzy.end_pub.publish(True)
+            total_fuzzy.next()
             count+=1
             print("arrive")
             rospy.sleep(3)
         else:
-            total.end_pub.publish(False)
+            total_fuzzy.end_pub.publish(False)
             pass
 
         if count == 0:

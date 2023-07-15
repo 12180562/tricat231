@@ -6,7 +6,8 @@ import rospy
 from geometry_msgs.msg import Point
 from sensor_msgs.msg import NavSatFix
 
-origin = rospy.get_param("origin")#[37.450746, 126.6549274, 55.5]
+origin = rospy.get_param("origin")
+# origin = [37.450746, 126.6549274, 55.5]
 boat = [0, 0, 0]
 
 def gps_fix_callback(msg):

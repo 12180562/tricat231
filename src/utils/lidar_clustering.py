@@ -240,11 +240,11 @@ class Lidar_Converter:
         """
         for ps in self.point_sets_list:
             if ps.dist_begin_to_end() > self.min_wall_length: # points_sets_list의 길이 즉 장애물의 길이  >  벽이라고 인정할 최소 길이 
-                # self.split_wall(ps)
-                self.obstacles.append(ps)
-            else:
-                self.clusturing_buoy(ps)
+                self.split_wall(ps)
                 # self.obstacles.append(ps)
+            else:
+                # self.clusturing_buoy(ps)
+                self.obstacles.append(ps)
 
     def split_wall(self, ps):
         """Split long groups into short ones
