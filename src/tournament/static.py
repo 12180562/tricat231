@@ -282,9 +282,9 @@ class Static:
         for n in range(len(reachableVel_global_all)):
             absNum = abs(reachableVel_global_all[n] - math.degrees(math.atan2(self.goal_y - self.boat_y, self.goal_x - self.boat_x)))
 
-        if absNum < minNum:
-            minNum = absNum
-            self.vector_desired = n
+            if absNum < minNum:
+                minNum = absNum
+                self.vector_desired = reachableVel_global_all[n]
 
         return self.vector_desired
     
@@ -293,7 +293,7 @@ class Static:
               distance, thruster : {self.distance_goal}, {self.u_thruster}\n \
               my xy : {self.boat_x}, {self.boat_y}\n \
               goal xy : {self.goal_x}, {self.goal_y}\n \
-              psi, desire : {self.psi}, {self.vector_desired}\n \
+              psi, desire : {self.psi}, {self.error_angle}\n \
               servo : {self.servo_pid_controller()-93}\n")
 
 def main():

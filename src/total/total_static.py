@@ -25,8 +25,8 @@ class Total_Static:
             enu_waypoint = [n, e]
             self.remained_waypoint.append(enu_waypoint)
 
-        self.goal_x = self.remained_waypoint[0][0]
-        self.goal_y = self.remained_waypoint[0][1]
+        self.goal_x = self.remained_waypoint[0][1]
+        self.goal_y = self.remained_waypoint[0][0]
 
         self.goal_range = rospy.get_param("goal_range")
         self.distance_goal = 0
@@ -145,43 +145,9 @@ class Total_Static:
     def next(self):
         del self.remained_waypoint[0]
 
-        self.goal_x=self.remained_waypoint[0][0]
-        self.goal_y=self.remained_waypoint[0][1]
+        self.goal_x=self.remained_waypoint[0][1]
+        self.goal_y=self.remained_waypoint[0][0]
 
-    def cal_err_angle(self):
-        output_angle = []
-        
-        self.psi_candidate = self.delete_vector_inside_obstacle(self.make_detecting_vector())
-        for i in range(len(self.psi_candidate)):
-            if self.psi_candidate[i][2] >= 180:
-                output_angle.append(-180 + abs(self.psi_candidate[i][2]) % 180)
-            elif self.psi_candidate[i][2] <= -180:
-                output_angle.append(180 - abs(self.psi_candidate[i][2]) % 180)
-            else:
-                output_angle.append(self.psi_candidate[i][2])
-        return output_angle
-    
-    def servo_pid_controller(self):
-        self.error_angle = self.choose_velocity_vector(self.cal_err_angle())
-        cp_servo = self.kp_servo * self.error_angle
-
-        yaw_rate = math.degrees(self.yaw_rate)
-        cd_servo = self.kd_servo * (-yaw_rate)
-
-        servo_pd = -(cp_servo + cd_servo)
-        u_servo = self.servo_middle + servo_pd
-
-        if u_servo > self.servo_range[1]:
-            u_servo = self.servo_range[1]
-        elif u_servo < self.servo_range[0]:
-            u_servo = self.servo_range[0]
-
-        return int(u_servo)
-    
-    def control_publish(self):
-        self.servo_pid_controller()
-        self.servo_pub.publish(self.u_servo)
-        self.thruster_pub.publish(self.u_thruster)
 
     def make_detecting_vector(self):
         detecting_points = np.zeros([self.angle_number+1,3])
@@ -309,11 +275,48 @@ class Total_Static:
         for n in range(len(reachableVel_global_all)):
             absNum = abs(reachableVel_global_all[n] - math.degrees(math.atan2(self.goal_y - self.boat_y, self.goal_x - self.boat_x)))
 
-        if absNum < minNum:
-            minNum = absNum
-            self.vector_desired = n
+            if absNum < minNum:
+                minNum = absNum
+                self.vector_desired = reachableVel_global_all[n]
 
         return self.vector_desired
+    
+    def cal_err_angle(self):
+        output_angle = []
+        
+        self.psi_candidate = self.delete_vector_inside_obstacle(self.make_detecting_vector())
+        for i in range(len(self.psi_candidate)):
+            if self.psi_candidate[i][2] >= 180:
+                output_angle.append(-180 + abs(self.psi_candidate[i][2]) % 180)
+            elif self.psi_candidate[i][2] <= -180:
+                output_angle.append(180 - abs(self.psi_candidate[i][2]) % 180)
+            else:
+                output_angle.append(self.psi_candidate[i][2])
+        print(output_angle)
+        
+        return output_angle
+    
+    def servo_pid_controller(self):
+        self.error_angle = self.choose_velocity_vector(self.cal_err_angle())
+        cp_servo = self.kp_servo * self.error_angle
+
+        yaw_rate = math.degrees(self.yaw_rate)
+        cd_servo = self.kd_servo * (-yaw_rate)
+
+        servo_pd = -(cp_servo + cd_servo)
+        u_servo = self.servo_middle + servo_pd
+
+        if u_servo > self.servo_range[1]:
+            u_servo = self.servo_range[1]
+        elif u_servo < self.servo_range[0]:
+            u_servo = self.servo_range[0]
+
+        return int(u_servo)
+    
+    def control_publish(self):
+        self.servo_pid_controller()
+        self.servo_pub.publish(self.u_servo)
+        self.thruster_pub.publish(self.u_thruster)
     
     def print_state(self):
         print(f"------------------------------------\n \
@@ -321,6 +324,7 @@ class Total_Static:
               my xy : {self.boat_x}, {self.boat_y}\n \
               goal xy : {self.goal_x}, {self.goal_y}\n \
               psi, desire : {self.psi}, {self.vector_desired}\n \
+              candidate: {self.psi_candidate}\n \
               servo : {self.servo_pid_controller()-93}\n")
 
 def main():
