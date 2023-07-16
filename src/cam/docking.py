@@ -7,31 +7,31 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 import rospy
 import cv2 as cv
 import numpy as np
-from std_msgs.msg import Float64, UInt16
+from std_msgs.msg import Float64, UInt16, Bool
 import markDetection
 
 class Docking :
     def __init__(self):
-        self.webcam = cv.VideoCapture(2)
-        self.detecting_color = 3
-        self.detecting_shape = 3
+        self.end = False
+        self.webcam = cv.VideoCapture(0)
         """
         detecting_color : Blue = 1, Green = 2, Red = 3
         detecting_shape : Circle = 0, Triangle = 3, Rectangle = 4, cross = 12
         """
+        self.detecting_color = rospy.get_param("detecting_color")
+        self.detecting_shape = rospy.get_param("detecting_shape")
 
-        # J: get_param으로 해서 빼는 방식 사용해도 좋을 듯(정우 tracbar에 합쳐 버리는 것도 좋을 듯)
-        # self.detecting_color = rospy.get_param("detecting_color")
-        # self.detecting_shape = rospy.get_param("detecting_shape")
-
-        # J: ??? 이게 맞노...
         self.u_servo = 93
         self.u_thruster = 1500
         # self.servo_angle, self.thruster_value
 
+        #sub
+        self.end_sub = rospy.Subscriber("/end_check", Bool, self.end_callback, queue_size=10)
         #pub
         self.servo_pub = rospy.Publisher("/u_servo_cam" ,UInt16, queue_size= 1)
         self.thruster_pub = rospy.Publisher("/u_thruster_cam",UInt16, queue_size= 1)
+        self.finish_pub = rospy.Publisher("/finish_check", Bool, queue_size=10)
+        self.finish = False
     
     def publish_value(self, u_servo, u_thruster) :
         self.u_servo = u_servo
@@ -39,10 +39,21 @@ class Docking :
         # 터미널 출력
         # rospy.loginfo("servo_angle = %d", self.u_servo)
         # rospy.loginfo("thruster = %d", self.u_thruster)
+        cnt = 0
+        if self.end:
+            cnt += 1
+        if cnt == 1:
+            self.servo_pub.publish(int(self.u_servo))
+            self.thruster_pub.publish(int(self.u_thruster))
+        else:
+            pass
+    
+    def end_callback(self, msg):
+        self.end = msg.data
         
-        self.servo_pub.publish(int(self.u_servo))
-        self.thruster_pub.publish(int(self.u_thruster))
-
+    def finish_callback(self, msg):
+        self.end = msg.data
+        
     def run(self):
         # webcam = cv.VideoCapture(0) # 캠 연결된 USB 포트 번호 수정하기
         # J: 컴퓨터 내장 웹캠은 0, usb 웹캠은 2 아님???
@@ -77,9 +88,9 @@ class Docking :
             cv.imshow("CONTROLLER", raw_image)
             # h,w,c = raw_image.shape # 원본 이미지에서 가로 길이 받아오기
             # move_with_largest(contour_info, w)
-            servo_angle, thruster_value = markDetection.move_with_largest(contour_info, raw_image.shape[1])
+            servo_angle, thruster_value, size = markDetection.move_with_largest(contour_info, raw_image.shape[1])
 
-            return servo_angle, thruster_value
+            return servo_angle, thruster_value, size 
 
     # def cam_callback(self, msg):
     # img = self.bridge.imgmsg_to_cv2(msg, "bgr8")
@@ -100,25 +111,28 @@ class Docking :
     #     # self.target_detect_area = cv2.getTrackbarPos("target_detect_area", "controller")
     #     # self.arrival_target_area = cv2.getTrackbarPos("arrival_target_area", "controller")
 
-
 def main():
     docking = Docking()
     rospy.init_node('Docking')
+    
     if not docking.webcam.isOpened(): # 캠이 연결되지 않았을 경우 # true시 캠이 잘 연결되어있음
             print("Could not open webcam")
             exit()
-    while docking  .webcam.isOpened():
-        u_servo, u_thruster = docking.run()
-        if cv.waitKey(1) & 0xFF == 27: # esc버튼 누르면 창 꺼짐
+            
+    while docking.webcam.isOpened():
+        u_servo, u_thruster, size = docking.run()
+        if (cv.waitKey(1) & 0xFF == 27) or size == 100: # esc버튼 누르면 창 꺼짐
+            docking.finish = True
             break
+            
     rate = rospy.Rate(10) # 10Hz
+    
     try:
         while not rospy.is_shutdown():
             docking.publish_value(u_servo, u_thruster)
             rate.sleep()
     except rospy.ROSInterruptException:
         pass
-
 
 if __name__=="__main__":
     main()

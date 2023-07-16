@@ -1,5 +1,6 @@
 # gnss_converter
 origin: [37.450631,126.6529135,49.451]
+
 #토너먼트
 autonomous_goal: [35.069481592976622, 128.57889197025276, 49.0]
 
@@ -19,6 +20,8 @@ thruster: 1550
 kp_servo : 0.4
 kd_servo : 0.1
 
+filter_queue_size: 10
+
 # static
 angle_number: 10
 
@@ -26,6 +29,11 @@ detecting_angle: 30
 
 margin: 5
 
-filter_queue_size: 1000000
-
 # fuzzy
+
+# docking
+detecting_color: 3
+detecting_shape: 3
+#detecting_color : Blue = 1, Green = 2, Red = 3
+#detecting_shape : Circle = 0, Triangle = 3, Rectangle = 4, cross = 12
+

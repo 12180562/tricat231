@@ -9,7 +9,7 @@ import rospy
 import numpy as np
 
 from geometry_msgs.msg import Point
-from std_msgs.msg import Float64, UInt16
+from std_msgs.msg import Float64, UInt16, Bool
 from sensor_msgs.msg import Imu, LaserScan
 from tricat231_pkg.msg import ObstacleList
 
@@ -28,14 +28,14 @@ class Total_Static:
         self.goal_x = self.remained_waypoint[0][0]
         self.goal_y = self.remained_waypoint[0][1]
 
-        self.goal_range=rospy.get_param("goal_range")
+        self.goal_range = rospy.get_param("goal_range")
         self.distance_goal = 0
         
         self.psi_candidate = []
         
         #My Boat
-        self.psi_queue = []  # 헤딩을 필터링할 이동평균필터 큐
         self.psi = 0
+        self.psi_queue = []  # 헤딩을 필터링할 이동평균필터 큐
         self.filter_queue_size = rospy.get_param("filter_queue_size")  # 이동평균필터 큐사이즈
         self.yaw_rate = 0
 
@@ -58,22 +58,25 @@ class Total_Static:
         #Lidar
         self.obstacles = []
         
-
         self.angle_min = 0.0 
         self.angle_increment = 0.0
         self.ranges = []
         self.danger_ob = {}
 
         #ROS
-        self.yaw_rate_sub = rospy.Subscriber("/imu/data", Imu, self.yaw_rate_callback)
+        self.yaw_rate_sub = rospy.Subscriber("/imu/data", Imu, self.yaw_rate_callback, queue_size=1)
         self.heading_sub = rospy.Subscriber("/heading", Float64, self.heading_callback, queue_size=1)
         self.enu_position_sub = rospy.Subscriber("/enu_position", Point, self.boat_position_callback, queue_size=1)
-        # self.lidar_sub = rospy.Subscriber("/scan", LaserScan, self.lidar_callback, queue_size=1)
         self.obstacle_sub = rospy.Subscriber("/obstacles", ObstacleList, self.obstacle_callback, queue_size=1)
+        # self.lidar_sub = rospy.Subscriber("/scan", LaserScan, self.lidar_callback, queue_size=1)
 
-        self.psi_pub  = rospy.Publisher("/pis",Float64, queue_size=0)
-        self.servo_pub = rospy.Publisher("/servo", UInt16, queue_size=0)
-        self.thruster_pub = rospy.Publisher("/thruster", UInt16, queue_size=0)
+        self.end_pub = rospy.Publisher("/end_check", Bool, queue_size=1)
+        self.finish_pub = rospy.Publisher("/finish_check", Bool, self.finish_callback, queue_size=1)
+        self.psi_pub  = rospy.Publisher("/pis",Float64, queue_size=1)
+        self.servo_pub = rospy.Publisher("/servo", UInt16, queue_size=1)
+        self.thruster_pub = rospy.Publisher("/thruster", UInt16, queue_size=1)
+        self.end = False
+        self.finish = False
         
         #Static Obstacle
         self.angle_number = rospy.get_param("angle_number")
@@ -83,14 +86,14 @@ class Total_Static:
         self.reachableVel_global_all = []
         self.vector_desired = 0
         self.error_angle = 0
-                
+    
     def yaw_rate_callback(self, msg):
         self.yaw_rate = msg.angular_velocity.z 
 
     def heading_callback(self, msg):
         self.psi = self.moving_avg_filter(self.psi_queue, self.filter_queue_size, msg.data)
         # self.psi = msg.data
-
+    
     def boat_position_callback(self, msg):
         self.boat_y = self.moving_avg_filter(self.boat_y_queue, self.filter_queue_size, msg.x)
         self.boat_x = self.moving_avg_filter(self.boat_x_queue, self.filter_queue_size, msg.y)
@@ -99,9 +102,15 @@ class Total_Static:
 
     def obstacle_callback(self, msg):
         self.obstacles = msg.obstacle
-        
+    
+    def finish_callback(self, msg):
+        self.finish = msg.data
+    
     def psi_publish(self):
         self.psi_pub.publish(self.psi)
+        
+    def end_publish(self):
+        self.end_pub.publish(self.end)
 
     def moving_avg_filter(self, queue, queue_size, input, use_prev=False):         
         if not use_prev:
@@ -124,7 +133,6 @@ class Total_Static:
         print("\n{:><70}".format("lidar_converter Connected "))
         # rospy.wait_for_message("/scan", LaserScan)
         # print("\n{:><70}".format("LiDAR Connected "))
-
         return True
 
     def cal_distance_goal(self):
@@ -319,9 +327,8 @@ def main():
     rospy.init_node("Total_Static", anonymous=False)
     rate = rospy.Rate(10) # 10 Hz
     total_static = Total_Static()
-
     count = 0
-
+    
     while not total_static.is_all_connected():
         rospy.sleep(0.2)
         print("\n{:<>70}".format(" All Connected !"))
@@ -331,7 +338,8 @@ def main():
 
         total_static.make_detecting_vector()
 
-        if total_static.end_check():
+        total_static.end = total_static.end_check()
+        if total_static.end:
             total_static.next()
             count+=1
             print("arrive")
@@ -344,12 +352,11 @@ def main():
         
         if count == 1:
             print("11111111111")
-            # 카메라 켜기
-            total_static.control_publish()
-
+            if total_static.finish == True:
+                total_static.control_publish()
+            
         if count == 2:
             print("2222222222222")
-            # 카메라 끄기
             total_static.control_publish()
 
         if count == 3:
