@@ -31,17 +31,17 @@ class Total_Static:
         self.goal_range = rospy.get_param("goal_range")
         self.distance_goal = 0
         
-        self.psi_candidate = []
+        self.psi_candidate = [] # cal_error_angle에서 사용되는 11,1 array
         
         #My Boat
-        self.psi = 0
+        self.psi = 0 # 자북 기준 heading 각도
         self.psi_queue = []  # 헤딩을 필터링할 이동평균필터 큐
         self.filter_queue_size = rospy.get_param("filter_queue_size")  # 이동평균필터 큐사이즈
-        self.yaw_rate = 0
+        self.yaw_rate = 0 # 각가속도
 
-        self.boat_x = 0
+        self.boat_x = 0 # x
         self.boat_x_queue = []  # boat_x을 필터링할 이동평균필터 큐
-        self.boat_y = 0
+        self.boat_y = 0 # y
         self.boat_y_queue = []  # boat_y을 필터링할 이동평균필터 큐
 
         self.servo_range = rospy.get_param("servo_range")
@@ -51,15 +51,14 @@ class Total_Static:
         self.u_thruster = rospy.get_param("thruster")
 
         #PID Control
-        self.errSum=0
+        self.errSum = 0
         self.kp_servo = rospy.get_param("kp_servo")
         self.kd_servo = rospy.get_param("kd_servo")
         
         #Lidar
-        self.obstacles = []
-        
+        self.obstacles = [] 
         self.angle_min = 0.0 
-        self.angle_increment = 0.0
+        self.angle_increment = 0.0 
         self.ranges = []
         self.danger_ob = {}
 
@@ -70,13 +69,17 @@ class Total_Static:
         self.obstacle_sub = rospy.Subscriber("/obstacles", ObstacleList, self.obstacle_callback, queue_size=1)
         # self.lidar_sub = rospy.Subscriber("/scan", LaserScan, self.lidar_callback, queue_size=1)
 
-        self.end_pub = rospy.Publisher("/end_check", Bool, queue_size=1)
-        self.finish_pub = rospy.Publisher("/finish_check", Bool, self.finish_callback, queue_size=1)
-        self.psi_pub  = rospy.Publisher("/pis",Float64, queue_size=1)
+        # pub
+        self.finish_pub = rospy.Publisher("/finish_check", Bool, queue_size=1)
         self.servo_pub = rospy.Publisher("/servo", UInt16, queue_size=1)
         self.thruster_pub = rospy.Publisher("/thruster", UInt16, queue_size=1)
-        self.end = False
         self.finish = False
+        
+        # rviz pub
+        self.end = False
+        self.end_pub = rospy.Publisher("/end_check", Bool, queue_size=1)
+        self.psi_pub  = rospy.Publisher("/pis",Float64, queue_size=1)
+        self.desire_pub = rospy.Publisher("/pis_desire", Float64, queue_size=1)
         
         #Static Obstacle
         self.angle_number = rospy.get_param("angle_number")
@@ -87,6 +90,7 @@ class Total_Static:
         self.vector_desired = 0
         self.error_angle = 0
     
+    # callback function
     def yaw_rate_callback(self, msg):
         self.yaw_rate = msg.angular_velocity.z 
 
@@ -103,14 +107,11 @@ class Total_Static:
     def obstacle_callback(self, msg):
         self.obstacles = msg.obstacle
     
-    def finish_callback(self, msg):
-        self.finish = msg.data
-    
-    def psi_publish(self):
+    def rviz_publish(self):
         self.psi_pub.publish(self.psi)
-        
-    def end_publish(self):
+        self.desire_pub.publish(self.psi_desire)
         self.end_pub.publish(self.end)
+        
 
     def moving_avg_filter(self, queue, queue_size, input, use_prev=False):         
         if not use_prev:
@@ -281,7 +282,7 @@ class Total_Static:
 
         return self.vector_desired
     
-    def cal_err_angle(self):
+    def rerange_angle(self):
         output_angle = []
         
         self.psi_candidate = self.delete_vector_inside_obstacle(self.make_detecting_vector())
@@ -297,7 +298,7 @@ class Total_Static:
         return output_angle
     
     def servo_pid_controller(self):
-        self.error_angle = self.choose_velocity_vector(self.cal_err_angle())
+        self.error_angle = self.choose_velocity_vector(self.rerange_angle())
         cp_servo = self.kp_servo * self.error_angle
 
         yaw_rate = math.degrees(self.yaw_rate)
@@ -342,32 +343,35 @@ def main():
 
         total_static.make_detecting_vector()
 
-        total_static.end = total_static.end_check()
-        if total_static.end:
-            total_static.next()
-            count+=1
-            print("arrive")
-            rospy.sleep(3)
-        else:
-            pass
-
-        if count == 0:
-            total_static.control_publish()
+        total_static.servo_pub.publish(total_static.servo_middle)
+        total_static.thruster_pub.publish(1550)
         
-        if count == 1:
-            print("11111111111")
-            if total_static.finish == True:
-                total_static.control_publish()
-            
-        if count == 2:
-            print("2222222222222")
-            total_static.control_publish()
+        # total_static.end = total_static.end_check()
+        # if total_static.end:
+        #     total_static.next()
+        #     count+=1
+        #     print("arrive")
+        #     rospy.sleep(3)
+        # else:
+        #     pass
 
-        if count == 3:
-            print("33333333333333333")
-            total_static.servo_pub.publish(total_static.servo_middle)
-            total_static.thruster_pub.publish(1500)
-            print("-------------Finished---------------")
+        # if count == 0:
+        #     total_static.control_publish()
+        
+        # if count == 1:
+        #     print("11111111111")
+        #     if total_static.finish == True:
+        #         total_static.control_publish()
+            
+        # if count == 2:
+        #     print("2222222222222")
+        #     total_static.control_publish()
+
+        # if count == 3:
+        #     print("33333333333333333")
+        #     total_static.servo_pub.publish(total_static.servo_middle)
+        #     total_static.thruster_pub.publish(1500)
+        #     print("-------------Finished---------------")
 
         rate.sleep()
 
