@@ -11,7 +11,6 @@ Panels:
         - /PointStamped1
         - /Path1
         - /MarkerArray1
-        - /MarkerArray2
       Splitter Ratio: 0.5
     Tree Height: 719
   - Class: rviz/Selection
@@ -93,37 +92,12 @@ Visualization Manager:
       Topic: /boat_trajectory_rviz
       Unreliable: false
       Value: true
-    - Alpha: 1
-      Class: rviz/Axes
-      Enabled: false
-      Length: 1
-      Name: Axes
-      Radius: 0.10000000149011612
-      Reference Frame: <Fixed Frame>
-      Show Trail: false
-      Value: false
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /obstacles_rviz
       Name: MarkerArray
       Namespaces:
         obstacle: true
-      Queue Size: 100
-      Value: true
-    - Class: rviz/MarkerArray
-      Enabled: true
-      Marker Topic: /boat_heading_rviz
-      Name: MarkerArray
-      Namespaces:
-        psi: true
-      Queue Size: 100
-      Value: true
-    - Class: rviz/MarkerArray
-      Enabled: true
-      Marker Topic: /waypoint
-      Name: MarkerArray
-      Namespaces:
-        {}
       Queue Size: 100
       Value: true
     - Alpha: 1
@@ -164,9 +138,19 @@ Visualization Manager:
       Value: true
     - Class: rviz/MarkerArray
       Enabled: true
-      Marker Topic: /boat_psi_rviz
+      Marker Topic: /choose_vec
       Name: MarkerArray
       Namespaces:
+        choose_vec: true
+        psi: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /heading_rviz
+      Name: MarkerArray
+      Namespaces:
+        heading: true
         psi: true
       Queue Size: 100
       Value: true
@@ -198,7 +182,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 81.94001770019531
+      Distance: 78.45094299316406
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -206,9 +190,9 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -3.0544912815093994
-        Y: 56.68491744995117
-        Z: -39.42091751098633
+        X: -6.730213165283203
+        Y: 56.37997817993164
+        Z: -39.607845306396484
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
