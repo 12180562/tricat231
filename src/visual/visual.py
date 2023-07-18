@@ -48,7 +48,8 @@ class map_rviz:
         self.pub_waypoint2 = rospy.Publisher("/waypoint2", PolygonStamped, queue_size=10)
         self.pub_waypoint3 = rospy.Publisher("/waypoint3", PolygonStamped, queue_size=10)
     
-    def publish_waypoint(self):
+    def publish_map(self):
+        self.pub_bsd.publish(self.bsd)
         cnt = 0
         if self.end:
             cnt += 1
@@ -63,9 +64,6 @@ class map_rviz:
             self.pub_waypoint3.publish(self.remained_polygon[2])
         else:
             print("Finish")
-    
-    def publish_map(self):
-        self.pub_bsd.publish(self.bsd)
 
     def end_callback(self, msg):
         self.end = msg.data
@@ -112,7 +110,7 @@ class boat_rviz:
         self.boat_y = 0.0
         self.psi = 0 # 배가 바라보는 각도(자북에서 부터) 
         # 자북? 나침반이 가리키는 방향(Imu) / 진북? 언제나 변하지 않는 방향(gps) = > 두 개를 잡는 방법 생각
-        self.heading = 0 # 배가 쫓아야 하는 방향
+        self.psi_desire = 0 # 배가 쫓아야 하는 방향
         
         self.boat_trajectory = Path()
         self.goal_trajectory = Path()
@@ -123,26 +121,25 @@ class boat_rviz:
         self.max_poses = 1000
 
         #sub
-        self.enu_pos_sub = rospy.Subscriber("/boat_position", Point, self.boat_position_callback, queue_size=1)
-        self.psi_desire_sub = rospy.Subscriber("/heading", Float64 , self.boat_heading_callback, queue_size=1)
-        self.psi_sub = rospy.Subscriber("/psi", Float64 , self.boat_psi_callback, queue_size=1)
+        rospy.Subscriber("/boat_position", Point, self.boat_position_callback, queue_size=1)
+        rospy.Subscriber("/psi", Float64 , self.psi_callback, queue_size=1)
+        rospy.Subscriber("/psi_desire", Float64 , self.psi_desire_callback, queue_size=1)
         
         #pub
-        self.pub_stamp = rospy.Publisher('/boat_position_rviz', PointStamped, queue_size=10)
-        self.boat_heading_rviz_pub = rospy.Publisher('/boat_heading_rviz', MarkerArray, queue_size=10, latch=True)
-        self.boat_psi_rviz_pub = rospy.Publisher('/boat_psi_rviz', MarkerArray, queue_size=10, latch=True)
+        self.boat_rviz_pub = rospy.Publisher('/boat_position_rviz', PointStamped, queue_size=10)
+        self.boat_psi_rviz_pub = rospy.Publisher('/psi_rviz', MarkerArray, queue_size=10, latch=True)
+        self.boat_psi_desire_rviz_pub = rospy.Publisher('/psi_desire_rviz', MarkerArray, queue_size=10, latch=True)
         self.boat_trajectory_pub = rospy.Publisher('/boat_trajectory_rviz', Path, queue_size=10, latch=True)
-
 
     def boat_position_callback(self,msg):
         self.boat_x = msg.x
         self.boat_y = msg.y
-
-    def boat_heading_callback(self,msg):
-        self.heading = msg.data
         
-    def boat_psi_callback(self, msg):
+    def psi_callback(self, msg):
         self.psi = msg.data
+
+    def psi_desire_callback(self,msg):
+        self.psi_desire = msg.data
 
     def psi_rviz(self):
         length = 1
@@ -160,42 +157,42 @@ class boat_rviz:
             color_g=255,
             color_b=0,
         )
-        psi_txt = sh.text_rviz(name="psi_desire", id=5, text="psi_desire", x=psi_arrow_end_x, y=psi_arrow_end_y)
-        psi = sh.marker_array_rviz([psi, psi_txt])
+        psi_txt = sh.text_rviz(name="psi", id=5, text="psi", x=psi_arrow_end_x, y=psi_arrow_end_y)
+        psi_m = sh.marker_array_rviz([psi, psi_txt])
         
-        return psi
+        return psi_m
     
-    def heading_rviz(self):
+    def psi_desire_rviz(self):
         length = 1
         ids = list(range(1, 100))
-        heading_arrow_end_x = length * math.cos(math.radians(self.heading)) + self.boat_x
-        heading_arrow_end_y = length * math.sin(math.radians(self.heading)) + self.boat_y
-        heading = sh.arrow_rviz(
-            name="psi",
+        psi_desire_arrow_end_x = length * math.cos(math.radians(self.psi_desire + self.psi)) + self.boat_x
+        psi_desire_arrow_end_y = length * math.sin(math.radians(self.psi_desire + self.psi)) + self.boat_y
+        psi_desire = sh.arrow_rviz(
+            name="psi_desired",
             id=ids.pop(),
             x1=self.boat_x,
             y1=self.boat_y,
-            x2=heading_arrow_end_x,
-            y2=heading_arrow_end_y,
+            x2=psi_desire_arrow_end_x,
+            y2=psi_desire_arrow_end_y,
             color_r=221,
             color_g=119,
             color_b=252,
         )
-        heading_txt = sh.text_rviz(name="heading", id=6, text="heading", x=heading_arrow_end_x, y=heading_arrow_end_y)
-        heading = sh.marker_array_rviz([heading, heading_txt])
-        return heading
+        psi_desire_txt = sh.text_rviz(name="psi_desire", id=6, text="psi_desire", x=psi_desire_arrow_end_x, y=psi_desire_arrow_end_y)
+        psi_desire_m = sh.marker_array_rviz([psi_desire, psi_desire_txt])
+        return psi_desire_m
 
     def publish_boat_position(self):
         boat_point = PointStamped()
         boat_point.header.frame_id = self.frame_id 
         boat_point.header.stamp = rospy.Time.now()
         boat_point.point = Vector3(self.boat_x, self.boat_y,0)
-        self.pub_stamp.publish(boat_point)
+        self.boat_rviz_pub.publish(boat_point)
 
-    def publish_heading(self):
+    def publish_psiApsi_disire(self):
         psi = self.psi_rviz()
-        heading = self.heading_rviz()
-        self.boat_heading_rviz_pub.publish(heading)
+        psi_desire = self.psi_desire_rviz()
+        self.boat_psi_desire_rviz_pub.publish(psi_desire)
         self.boat_psi_rviz_pub.publish(psi)
 
     def publish_trajectory(self):
@@ -228,11 +225,10 @@ def main():
     try:
         while not rospy.is_shutdown():
             
-            boat.publish_heading()
-            boat.publish_trajectory()
+            boat.publish_psiApsi_disire()
             boat.publish_boat_position()
+            boat.publish_trajectory()
             obstacle.publish_obstacle()
-            map.publish_waypoint()
             map.publish_map()
             rate.sleep()
     except rospy.ROSInterruptException:
