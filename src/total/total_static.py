@@ -34,10 +34,10 @@ class Total_Static:
         self.psi_candidate = []
         
         #My Boat
-        self.psi = 0
-        self.psi_queue = []  # 헤딩을 필터링할 이동평균필터 큐
         self.filter_queue_size = rospy.get_param("filter_queue_size")  # 이동평균필터 큐사이즈
-        self.yaw_rate = 0
+        self.psi = 0 # 배가 바라보는 방향과 자북 사이의 각도
+        self.psi_queue = []  # 헤딩을 필터링할 이동평균필터 큐
+        self.yaw_rate = 0 # PID 제어에서 사용
 
         self.boat_x = 0
         self.boat_x_queue = []  # boat_x을 필터링할 이동평균필터 큐
@@ -47,7 +47,6 @@ class Total_Static:
         self.servo_range = rospy.get_param("servo_range")
         self.servo_middle = int((self.servo_range[0] + self.servo_range[1]) / 2) 
         self.u_servo = self.servo_middle
-        
         self.u_thruster = rospy.get_param("thruster")
 
         #PID Control
@@ -71,29 +70,19 @@ class Total_Static:
         self.obstacle_sub = rospy.Subscriber("/obstacles", ObstacleList, self.obstacle_callback, queue_size=1)
         # self.lidar_sub = rospy.Subscriber("/scan", LaserScan, self.lidar_callback, queue_size=1)
 
-<<<<<<< HEAD
         # pub
-        self.end = False
         self.finish = False
-        self.end_pub = rospy.Publisher("/end_check", Bool, queue_size=1)
         self.finish_pub = rospy.Publisher("/finish_check", Bool, queue_size=1)
         self.servo_pub = rospy.Publisher("/servo", UInt16, queue_size=1)
         self.thruster_pub = rospy.Publisher("/thruster", UInt16, queue_size=1)
-        # pub_rviz
-        self.boat_pos_pub = rospy.Publisher("/boat_position", Point,queue_size=1) # boat 위치
-        self.psi_pub  = rospy.Publisher("/psi", Float64, queue_size=1) # 배가 바라보는 방향
-        self.psi_desire_pub  = rospy.Publisher("/psi_desire", Float64, queue_size=1) # 배가 바라보는 방향
-=======
-        self.psi_pub  = rospy.Publisher("/pis", Float64, queue_size=1)
-        self.servo_pub = rospy.Publisher("/servo", UInt16, queue_size=1)
-        self.thruster_pub = rospy.Publisher("/thruster", UInt16, queue_size=1)
-
-        self.end_pub = rospy.Publisher("/end_check", Bool, queue_size=1)
-        self.finish_pub = rospy.Publisher("/finish_check", Bool, self.finish_callback, queue_size=1)
-        self.end = False
-        self.finish = False
->>>>>>> 61c97e4c1d6287a259504a61407924783e07639f
         
+        # pub for rviz
+        self.end = False
+        self.boat_pos_pub = rospy.Publisher("/boat_position", Point,queue_size=1) # boat 위치
+        self.psi_pub  = rospy.Publisher("/psi", Float64, queue_size=1) # 배가 바라보는 방향과 자북 사이의 각도
+        self.psi_desire_pub  = rospy.Publisher("/psi_desire", Float64, queue_size=1) # 배가 바라보는 방향과 골과의 각도
+        self.end_pub = rospy.Publisher("/end_check", Bool, queue_size=1)
+
         #Static Obstacle
         self.angle_number = rospy.get_param("angle_number")
         self.detecting_angle = rospy.get_param("detecting_angle")
@@ -103,6 +92,7 @@ class Total_Static:
         self.vector_desired = 0
         self.error_angle = 0
 
+    # callback function
     def yaw_rate_callback(self, msg):
         self.yaw_rate = msg.angular_velocity.z 
 
@@ -116,12 +106,8 @@ class Total_Static:
         # self.boat_y = msg.x
         # self.boat_x = msg.y
 
-    # callback function
     def obstacle_callback(self, msg):
         self.obstacles = msg.obstacle
-    
-    # def finish_callback(self, msg):
-    #     self.finish = msg.data
     
     # publish function
     def boat_position_pub(self):
@@ -134,7 +120,7 @@ class Total_Static:
         self.psi_pub.publish(self.psi)
 
     def psi_desire_publish(self):
-        self.psi_desire_pub.publish(self.psi)
+        self.psi_desire_pub.publish(self.error_angle)
         
     def end_publish(self):
         self.end_pub.publish(self.end)
