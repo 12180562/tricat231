@@ -110,8 +110,9 @@ class boat_rviz:
         # self.boat_model = "boat231.urdf"
         self.boat_x = 0.0
         self.boat_y = 0.0
-        self.psi = 0
-        self.heading = 0
+        self.psi = 0 # 배가 바라보는 각도(자북에서 부터) 
+        # 자북? 나침반이 가리키는 방향(Imu) / 진북? 언제나 변하지 않는 방향(gps) = > 두 개를 잡는 방법 생각
+        self.heading = 0 # 배가 쫓아야 하는 방향
         
         self.boat_trajectory = Path()
         self.goal_trajectory = Path()
@@ -122,9 +123,9 @@ class boat_rviz:
         self.max_poses = 1000
 
         #sub
-        self.enu_pos_sub = rospy.Subscriber("/enu_position", Point, self.boat_position_callback, queue_size=1)
-        self.heading_sub = rospy.Subscriber("/heading", Float64 , self.boat_heading_callback, queue_size=1)
-        self.psi_sub = rospy.Subscriber("/psi_desire", Float64 , self.boat_psi_callback, queue_size=1)
+        self.enu_pos_sub = rospy.Subscriber("/boat_position", Point, self.boat_position_callback, queue_size=1)
+        self.psi_desire_sub = rospy.Subscriber("/heading", Float64 , self.boat_heading_callback, queue_size=1)
+        self.psi_sub = rospy.Subscriber("/psi", Float64 , self.boat_psi_callback, queue_size=1)
         
         #pub
         self.pub_stamp = rospy.Publisher('/boat_position_rviz', PointStamped, queue_size=10)
@@ -134,8 +135,8 @@ class boat_rviz:
 
 
     def boat_position_callback(self,msg):
-        self.boat_y = msg.x
-        self.boat_x = msg.y
+        self.boat_x = msg.x
+        self.boat_y = msg.y
 
     def boat_heading_callback(self,msg):
         self.heading = msg.data
