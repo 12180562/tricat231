@@ -64,19 +64,24 @@ class Total_Static:
         self.danger_ob = {}
 
         #ROS
+        # sub
         self.yaw_rate_sub = rospy.Subscriber("/imu/data", Imu, self.yaw_rate_callback, queue_size=1)
         self.heading_sub = rospy.Subscriber("/heading", Float64, self.heading_callback, queue_size=1)
         self.enu_position_sub = rospy.Subscriber("/enu_position", Point, self.boat_position_callback, queue_size=1)
         self.obstacle_sub = rospy.Subscriber("/obstacles", ObstacleList, self.obstacle_callback, queue_size=1)
         # self.lidar_sub = rospy.Subscriber("/scan", LaserScan, self.lidar_callback, queue_size=1)
 
-        self.end_pub = rospy.Publisher("/end_check", Bool, queue_size=1)
-        self.finish_pub = rospy.Publisher("/finish_check", Bool, self.finish_callback, queue_size=1)
-        self.psi_pub  = rospy.Publisher("/pis",Float64, queue_size=1)
-        self.servo_pub = rospy.Publisher("/servo", UInt16, queue_size=1)
-        self.thruster_pub = rospy.Publisher("/thruster", UInt16, queue_size=1)
+        # pub
         self.end = False
         self.finish = False
+        self.end_pub = rospy.Publisher("/end_check", Bool, queue_size=1)
+        self.finish_pub = rospy.Publisher("/finish_check", Bool, queue_size=1)
+        self.servo_pub = rospy.Publisher("/servo", UInt16, queue_size=1)
+        self.thruster_pub = rospy.Publisher("/thruster", UInt16, queue_size=1)
+        # pub_rviz
+        self.boat_pos_pub = rospy.Publisher("/boat_position", Point,queue_size=1) # boat 위치
+        self.psi_pub  = rospy.Publisher("/psi", Float64, queue_size=1) # 배가 바라보는 방향
+        self.psi_desire_pub  = rospy.Publisher("/psi_desire", Float64, queue_size=1) # 배가 바라보는 방향
         
         #Static Obstacle
         self.angle_number = rospy.get_param("angle_number")
@@ -100,18 +105,30 @@ class Total_Static:
         # self.boat_y = msg.x
         # self.boat_x = msg.y
 
+    # callback function
     def obstacle_callback(self, msg):
         self.obstacles = msg.obstacle
     
-    def finish_callback(self, msg):
-        self.finish = msg.data
+    # def finish_callback(self, msg):
+    #     self.finish = msg.data
     
+    # publish function
+    def boat_position_pub(self):
+        boat_position = Point()
+        boat_position.x = self.boat_x
+        boat_position.y = self.boat_y
+        self.boat_pos_pub.publish(boat_position)
+
     def psi_publish(self):
         self.psi_pub.publish(self.psi)
+
+    def psi_desire_publish(self):
+        self.psi_desire_pub.publish(self.psi)
         
     def end_publish(self):
         self.end_pub.publish(self.end)
 
+    # 이동 평균 필터
     def moving_avg_filter(self, queue, queue_size, input, use_prev=False):         
         if not use_prev:
             if len(queue) >= queue_size:
