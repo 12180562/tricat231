@@ -13,7 +13,7 @@
 	</node>
 
 	<!--GPS-->
-	<!-- <include file="$(find ntrip_ros)/launch/ntrip_ros.launch"></include> -->
+	<include file="$(find ntrip_ros)/launch/ntrip_ros.launch"></include>
 	<!-- <include file="$(find ntrip_ros_python3)/launch/ntrip_ros.launch"></include> -->
 
 	<!--IMU-->
