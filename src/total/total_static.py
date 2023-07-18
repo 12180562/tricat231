@@ -70,11 +70,12 @@ class Total_Static:
         self.obstacle_sub = rospy.Subscriber("/obstacles", ObstacleList, self.obstacle_callback, queue_size=1)
         # self.lidar_sub = rospy.Subscriber("/scan", LaserScan, self.lidar_callback, queue_size=1)
 
-        self.end_pub = rospy.Publisher("/end_check", Bool, queue_size=1)
-        self.finish_pub = rospy.Publisher("/finish_check", Bool, self.finish_callback, queue_size=1)
-        self.psi_pub  = rospy.Publisher("/pis",Float64, queue_size=1)
+        self.psi_pub  = rospy.Publisher("/pis", Float64, queue_size=1)
         self.servo_pub = rospy.Publisher("/servo", UInt16, queue_size=1)
         self.thruster_pub = rospy.Publisher("/thruster", UInt16, queue_size=1)
+
+        self.end_pub = rospy.Publisher("/end_check", Bool, queue_size=1)
+        self.finish_pub = rospy.Publisher("/finish_check", Bool, self.finish_callback, queue_size=1)
         self.end = False
         self.finish = False
         
@@ -86,7 +87,7 @@ class Total_Static:
         self.reachableVel_global_all = []
         self.vector_desired = 0
         self.error_angle = 0
-    
+
     def yaw_rate_callback(self, msg):
         self.yaw_rate = msg.angular_velocity.z 
 
@@ -133,10 +134,11 @@ class Total_Static:
         print("\n{:><70}".format("lidar_converter Connected "))
         # rospy.wait_for_message("/scan", LaserScan)
         # print("\n{:><70}".format("LiDAR Connected "))
+
         return True
 
     def cal_distance_goal(self):
-            self.distance_goal = math.hypot(self.boat_x-self.goal_x,self.boat_y-self.goal_y)
+        self.distance_goal = math.hypot(self.boat_x-self.goal_x, self.boat_y-self.goal_y)
 
     def end_check(self):
         self.cal_distance_goal()
@@ -173,7 +175,7 @@ class Total_Static:
             static_OB_data.append(i.end.x)
             static_OB_data.append(i.end.x)
 
-        # pA = np.array([self.boat_x,self.boat_y])
+        pA = np.array([self.boat_x,self.boat_y])
         delta_t = 1
         obstacle_number = 0
 
@@ -202,38 +204,38 @@ class Total_Static:
             reachableVel_global_all_after_delta_t = reachableVel_global_all * delta_t 
 
             for i in range(len(reachableVel_global_all_after_delta_t)): 
-                # after_delta_t_x = reachableVel_global_all_after_delta_t[i][0]+pA[0]
-                # after_delta_t_y = reachableVel_global_all_after_delta_t[i][1]+pA[1]
+                after_delta_t_x = reachableVel_global_all_after_delta_t[i][0]+pA[0]
+                after_delta_t_y = reachableVel_global_all_after_delta_t[i][1]+pA[1]
                 
-                # if (pA[0]-after_delta_t_x) == 0 and (pA[1]-after_delta_t_y) < 0:
-                #     vector_slope = 9999
-
-                # elif (pA[0]-after_delta_t_x) == 0 and (pA[1]-after_delta_t_y) > 0:
-                #     vector_slope = -9999
-                    
-                # else:
-                #     vector_slope = (pA[1]-after_delta_t_y)/(pA[0]-after_delta_t_x)
-
-                # if self.get_crosspt(slope, vector_slope, obstacle_point_x[0], obstacle_point_y[0],obstacle_point_x[1], obstacle_point_y[1], pA[0], pA[1], after_delta_t_x, after_delta_t_y):
-                #     del reachableVel_global_all[i]
-                # else:
-                #     pass
-                after_delta_t_x = reachableVel_global_all_after_delta_t[i][0]+self.boat_x
-                after_delta_t_y = reachableVel_global_all_after_delta_t[i][1]+self.boat_y
-                
-                if (self.boat_x-after_delta_t_x) == 0 and (self.boat_y-after_delta_t_y) < 0:
+                if (pA[0]-after_delta_t_x) == 0 and (pA[1]-after_delta_t_y) < 0:
                     vector_slope = 9999
 
-                elif (self.boat_x-after_delta_t_x) == 0 and (self.boat_y-after_delta_t_y) > 0:
+                elif (pA[0]-after_delta_t_x) == 0 and (pA[1]-after_delta_t_y) > 0:
                     vector_slope = -9999
                     
                 else:
-                    vector_slope = (self.boat_y-after_delta_t_y)/(self.boat_x-after_delta_t_x)
+                    vector_slope = (pA[1]-after_delta_t_y)/(pA[0]-after_delta_t_x)
 
-                if self.get_crosspt(slope, vector_slope, obstacle_point_x[0], obstacle_point_y[0],obstacle_point_x[1], obstacle_point_y[1], self.boat_x, self.boat_y, after_delta_t_x, after_delta_t_y):
+                if self.get_crosspt(slope, vector_slope, obstacle_point_x[0], obstacle_point_y[0],obstacle_point_x[1], obstacle_point_y[1], pA[0], pA[1], after_delta_t_x, after_delta_t_y):
                     reachableVel_global_all[i][2] = 180
                 else:
                     pass
+                # after_delta_t_x = reachableVel_global_all_after_delta_t[i][0]+self.boat_x
+                # after_delta_t_y = reachableVel_global_all_after_delta_t[i][1]+self.boat_y
+                
+                # if (self.boat_x-after_delta_t_x) == 0 and (self.boat_y-after_delta_t_y) < 0:
+                #     vector_slope = 9999
+
+                # elif (self.boat_x-after_delta_t_x) == 0 and (self.boat_y-after_delta_t_y) > 0:
+                #     vector_slope = -9999
+                    
+                # else:
+                #     vector_slope = (self.boat_y-after_delta_t_y)/(self.boat_x-after_delta_t_x)
+
+                # if self.get_crosspt(slope, vector_slope, obstacle_point_x[0], obstacle_point_y[0],obstacle_point_x[1], obstacle_point_y[1], self.boat_x, self.boat_y, after_delta_t_x, after_delta_t_y):
+                #     reachableVel_global_all[i][2] = 180
+                # else:
+                #     pass
 
         return reachableVel_global_all
         
@@ -275,10 +277,10 @@ class Total_Static:
         for n in range(len(reachableVel_global_all)):
             absNum = abs(reachableVel_global_all[n] - math.degrees(math.atan2(self.goal_y - self.boat_y, self.goal_x - self.boat_x)))
 
-            if absNum < minNum:
+            if absNum > minNum:
                 minNum = absNum
                 self.vector_desired = reachableVel_global_all[n]
-
+        # print(f"vertor_desired: {self.vector_desired}\n")
         return self.vector_desired
     
     def cal_err_angle(self):
@@ -292,14 +294,14 @@ class Total_Static:
                 output_angle.append(180 - abs(self.psi_candidate[i][2]) % 180)
             else:
                 output_angle.append(self.psi_candidate[i][2])
-        print(output_angle)
+        # print(f"rerange angle: {output_angle}\n")
         
         return output_angle
     
     def servo_pid_controller(self):
         self.error_angle = self.choose_velocity_vector(self.cal_err_angle())
         cp_servo = self.kp_servo * self.error_angle
-
+        # print(f"error_angle: {self.error_angle}\n")
         yaw_rate = math.degrees(self.yaw_rate)
         cd_servo = self.kd_servo * (-yaw_rate)
 
@@ -323,9 +325,9 @@ class Total_Static:
               distance, thruster : {self.distance_goal}, {self.u_thruster}\n \
               my xy : {self.boat_x}, {self.boat_y}\n \
               goal xy : {self.goal_x}, {self.goal_y}\n \
-              psi, desire : {self.psi}, {self.vector_desired}\n \
-              candidate: {self.psi_candidate}\n \
+              psi, desire : {round(self.psi,2)}, {round(self.vector_desired,2)}\n \
               servo : {self.servo_pid_controller()-93}\n")
+              #candidate: {self.psi_candidate}\n \
 
 def main():
     rospy.init_node("Total_Static", anonymous=False)
@@ -338,16 +340,22 @@ def main():
         print("\n{:<>70}".format(" All Connected !"))
 
     while not rospy.is_shutdown():
+        total_static.cal_distance_goal()
         total_static.print_state()
 
         total_static.make_detecting_vector()
-
+        # total_static.control_publish()
         total_static.end = total_static.end_check()
         if total_static.end:
-            total_static.next()
-            count+=1
-            print("arrive")
-            rospy.sleep(3)
+            if len(total_static.remained_waypoint) != 0:
+                total_static.next()
+                count+=1
+                print("arrive")
+                rospy.sleep(3)
+            else:
+                total_static.servo_pub.publish(total_static.servo_middle)
+                total_static.thruster_pub.publish(1500)
+                print("-------------Finished---------------")
         else:
             pass
 
@@ -362,12 +370,6 @@ def main():
         if count == 2:
             print("2222222222222")
             total_static.control_publish()
-
-        if count == 3:
-            print("33333333333333333")
-            total_static.servo_pub.publish(total_static.servo_middle)
-            total_static.thruster_pub.publish(1500)
-            print("-------------Finished---------------")
 
         rate.sleep()
 
