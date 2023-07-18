@@ -5,7 +5,7 @@
 
 #include <Servo.h> 
 #include <ros.h>
-#include <std_msgs/UInt64.h>
+#include <std_msgs/UInt16.h>
 
 ros::NodeHandle  nh;
  
@@ -26,18 +26,18 @@ Servo thruster2; //스러스터2
 Servo servo1;
 Servo servo2;    //서보모터
 
-void servo_cb( const std_msgs::UInt64& cmd_msg){
+void servo_cb( const std_msgs::UInt16& cmd_msg){
   servo1.write(cmd_msg.data-2);
   servo2.write(cmd_msg.data);
 }                             //0-300
 
-void thruster_cb( const std_msgs::UInt64& cmd_msg){
+void thruster_cb( const std_msgs::UInt16& cmd_msg){
   thruster1.writeMicroseconds(cmd_msg.data);
   thruster2.writeMicroseconds(cmd_msg.data);//1100-1900
 }
 
-ros::Subscriber<std_msgs::UInt64> sub1("servo", servo_cb);
-ros::Subscriber<std_msgs::UInt64> sub3("thruster", thruster_cb);
+ros::Subscriber<std_msgs::UInt16> sub1("servo", servo_cb);
+ros::Subscriber<std_msgs::UInt16> sub3("thruster", thruster_cb);
 
 void setup()
 { 
