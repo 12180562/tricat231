@@ -40,9 +40,9 @@ class Total_Static:
         self.yaw_rate = 0 # 각가속도
 
         self.boat_x = 0 
-        self.boat_x_queue = []  # boat_x을 필터링할 이동평균필터 큐
+        # self.boat_x_queue = []  # boat_x을 필터링할 이동평균필터 큐
         self.boat_y = 0
-        self.boat_y_queue = []  # boat_y을 필터링할 이동평균필터 큐
+        # self.boat_y_queue = []  # boat_y을 필터링할 이동평균필터 큐
 
         self.servo_range = rospy.get_param("servo_range")
         self.servo_middle = int((self.servo_range[0] + self.servo_range[1]) / 2) 
@@ -95,14 +95,14 @@ class Total_Static:
         self.yaw_rate = msg.angular_velocity.z 
 
     def heading_callback(self, msg):
-        self.psi = self.moving_avg_filter(self.psi_queue, self.filter_queue_size, msg.data)
-        # self.psi = msg.data
+        # self.psi = self.moving_avg_filter(self.psi_queue, self.filter_queue_size, msg.data)
+        self.psi = msg.data
     
     def boat_position_callback(self, msg):
-        self.boat_y = self.moving_avg_filter(self.boat_y_queue, self.filter_queue_size, msg.x)
-        self.boat_x = self.moving_avg_filter(self.boat_x_queue, self.filter_queue_size, msg.y)
-        # self.boat_y = msg.x
-        # self.boat_x = msg.y
+        # self.boat_y = self.moving_avg_filter(self.boat_y_queue, self.filter_queue_size, msg.x)
+        # self.boat_x = self.moving_avg_filter(self.boat_x_queue, self.filter_queue_size, msg.y)
+        self.boat_y = msg.x
+        self.boat_x = msg.y
 
     def obstacle_callback(self, msg):
         self.obstacles = msg.obstacle
@@ -205,8 +205,9 @@ class Total_Static:
                     return False
     
     def delete_vector_inside_obstacle(self, reachableVel_global_all):
-        static_OB_data=[]
         
+        static_OB_data=[]
+        # print(reachableVel_global_all) # no error
         for i in self.obstacles:            
             static_OB_data.append(i.begin.x)
             static_OB_data.append(i.begin.y)
@@ -214,7 +215,7 @@ class Total_Static:
             static_OB_data.append(i.end.x)
 
         pA = np.array([self.boat_x,self.boat_y])
-        delta_t = 1
+        delta_t = 0.5
         obstacle_number = 0
 
         while (obstacle_number) != len(static_OB_data):
@@ -239,7 +240,8 @@ class Total_Static:
             else: 
                 slope = (obstacle_point_y[1]-obstacle_point_y[0])/(obstacle_point_x[1]-obstacle_point_x[0])
                 
-            reachableVel_global_all_after_delta_t = reachableVel_global_all * delta_t 
+            reachableVel_global_all_after_delta_t = reachableVel_global_all
+            # print(reachableVel_global_all_after_delta_t[0])
 
             for i in range(len(reachableVel_global_all_after_delta_t)): 
                 after_delta_t_x = reachableVel_global_all_after_delta_t[i][0]+pA[0]
@@ -255,9 +257,13 @@ class Total_Static:
                     vector_slope = (pA[1]-after_delta_t_y)/(pA[0]-after_delta_t_x)
 
                 if self.get_crosspt(slope, vector_slope, obstacle_point_x[0], obstacle_point_y[0],obstacle_point_x[1], obstacle_point_y[1], pA[0], pA[1], after_delta_t_x, after_delta_t_y):
-                    reachableVel_global_all[i][2] = 180
+                    #reachableVel_global_all[i][2] -= 180
+                    pass
+                    
                 else:
                     pass
+                # print(reachableVel_global_all[i][2])
+                
                 # after_delta_t_x = reachableVel_global_all_after_delta_t[i][0]+self.boat_x
                 # after_delta_t_y = reachableVel_global_all_after_delta_t[i][1]+self.boat_y
                 
@@ -274,40 +280,45 @@ class Total_Static:
                 #     reachableVel_global_all[i][2] = 180
                 # else:
                 #     pass
+        # print(reachableVel_global_all)
 
         return reachableVel_global_all
         
     # Step3. rerange angle (We think about this more)
-    def rerange_angle(self):
-        output_angle = []
+    # def rerange_angle(self):
+    #     output_angle = []
         
-        self.psi_candidate = self.delete_vector_inside_obstacle(self.make_detecting_vector())
-        for i in range(len(self.psi_candidate)):
-            if self.psi_candidate[i][2] >= 180:
-                output_angle.append(-180 + abs(self.psi_candidate[i][2]) % 180)
-            elif self.psi_candidate[i][2] <= -180:
-                output_angle.append(180 - abs(self.psi_candidate[i][2]) % 180)
-            else:
-                output_angle.append(self.psi_candidate[i][2])
-        # print(f"rerange angle: {output_angle}\n")
+    #     self.psi_candidate = self.delete_vector_inside_obstacle(self.make_detecting_vector())
+    #     # print(self.psi_candidate)
+    #     for i in range(len(self.psi_candidate)):
+    #         if self.psi_candidate[i][2] >= 180:
+    #             output_angle.append(-180 + abs(self.psi_candidate[i][2]) % 180)
+    #         elif self.psi_candidate[i][2] <= -180:
+    #             output_angle.append(180 - abs(self.psi_candidate[i][2]) % 180)
+    #         else:
+    #             output_angle.append(self.psi_candidate[i][2])
+    #     # print(f"rerange angle: {output_angle}\n")
         
-        return output_angle
+    #     return output_angle
 
     # Step4. choose vector
     def choose_velocity_vector(self,reachableVel_global_all):
-        minNum = 0
+        minNum = 180
         for n in range(len(reachableVel_global_all)):
-            absNum = abs(reachableVel_global_all[n] - math.degrees(math.atan2(self.goal_y - self.boat_y, self.goal_x - self.boat_x)))
+            absNum = abs(reachableVel_global_all[n][2] - math.degrees(math.atan2(self.goal_y - self.boat_y, self.goal_x - self.boat_x)))
 
-            if absNum > minNum:
+            if absNum < minNum:
                 minNum = absNum
-                self.vector_desired = reachableVel_global_all[n]
+                self.vector_desired = reachableVel_global_all[n][2]
+                
         # print(f"vertor_desired: {self.vector_desired}\n")
+            # print("벡터 번호: ", reachableVel_global_all.index(self.vector_desired))
         return self.vector_desired
     
     # Step5. PID control
     def servo_pid_controller(self):
-        self.psi_desire = self.choose_velocity_vector(self.rerange_angle())
+        # self.psi_desire = self.choose_velocity_vector(self.rerange_angle())
+        self.psi_desire = self.choose_velocity_vector(self.delete_vector_inside_obstacle(self.make_detecting_vector()))
         self.control_angle = self.psi_desire - self.psi
         cp_servo = self.kp_servo * self.control_angle
         # print(f"error_angle: {self.error_angle}\n")
@@ -353,7 +364,7 @@ def main():
         total_static.cal_distance_goal()
         total_static.print_state()
 
-        total_static.make_detecting_vector()
+        # total_static.make_detecting_vector()
         total_static.end = total_static.end_check()
 
         # if total_static.end:
