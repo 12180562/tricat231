@@ -17,7 +17,7 @@ servo_range: [78, 113]
 
 thruster: 1550
 
-kp_servo : 0.4
+kp_servo : 0.2
 kd_servo : 0.1
 
 filter_queue_size: 10

@@ -160,7 +160,7 @@ class boat_rviz:
         choose_vec_m = sh.marker_array_rviz([choose_vec, choose_vec_txt])
         return choose_vec_m
     
-    def psi_desire_rviz(self):
+    def heading_rviz(self):
         length = 1
         ids = list(range(1, 100))
         heading_arrow_end_x = length * math.cos(math.radians(self.psi_desire)) + self.boat_x
@@ -185,7 +185,7 @@ class boat_rviz:
         boat_point.header.frame_id = self.frame_id 
         boat_point.header.stamp = rospy.Time.now()
         boat_point.point = Vector3(self.boat_x, self.boat_y,0)
-        self.boat_rviz_pub.publish(boat_point)
+        self.pub_stamp.publish(boat_point)
 
     def publish_heading(self):
         heading = self.heading_rviz()

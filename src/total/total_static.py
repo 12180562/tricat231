@@ -47,7 +47,7 @@ class Total_Static:
         self.servo_range = rospy.get_param("servo_range")
         self.servo_middle = int((self.servo_range[0] + self.servo_range[1]) / 2) 
         self.u_servo = self.servo_middle
-        self.u_thruster = rospy.get_param("thruster")
+        self.u_thruster = int(rospy.get_param("thruster"))
 
         #PID Control
         self.errSum = 0
@@ -314,8 +314,9 @@ class Total_Static:
         yaw_rate = math.degrees(self.yaw_rate)
         cd_servo = self.kd_servo * (-yaw_rate)
 
-        servo_pd = -(cp_servo + cd_servo)
+        servo_pd = int(-(cp_servo + cd_servo))
         self.u_servo = self.servo_middle + servo_pd
+        # print(servo_pd, type(servo_pd))
 
         if self.u_servo > self.servo_range[1]:
             self.u_servo = self.servo_range[1]
@@ -335,18 +336,18 @@ class Total_Static:
               my xy : {self.boat_x}, {self.boat_y}\n \
               goal xy : {self.goal_x}, {self.goal_y}\n \
               psi, desire : {round(self.psi,2)}, {round(self.vector_desired,2)}\n \
-              servo : {self.servo_pid_controller()-93}\n")
+              servo : {self.u_servo}\n")
               #candidate: {self.psi_candidate}\n \
 
 def main():
     rospy.init_node("Total_Static", anonymous=False)
     rate = rospy.Rate(10) # 10 Hz
     total_static = Total_Static()
-    count = 0
+    # count = 0
     
-    while not total_static.is_all_connected():
-        rospy.sleep(0.2)
-        print("\n{:<>70}".format(" All Connected !"))
+    # while not total_static.is_all_connected():
+    #     rospy.sleep(0.2)
+    #     print("\n{:<>70}".format(" All Connected !"))
 
     while not rospy.is_shutdown():
         total_static.cal_distance_goal()
@@ -354,29 +355,35 @@ def main():
 
         total_static.make_detecting_vector()
         total_static.end = total_static.end_check()
-        if total_static.end:
-            if len(total_static.remained_waypoint) != 0:
-                total_static.next()
-                count+=1
-                print("arrive")
-                rospy.sleep(3)
-            else:
-                total_static.servo_pub.publish(total_static.servo_middle)
-                total_static.thruster_pub.publish(1500)
-                print("-------------Finished---------------")
-            pass
 
-        if count == 0:
-            total_static.control_publish()
+        # if total_static.end:
+        #     if len(total_static.remained_waypoint) != 0:
+        #         total_static.next()
+        #         count+=1
+        #         print("arrive")
+        #         rospy.sleep(3)
+        #     else:
+        #         total_static.servo_pub.publish(total_static.servo_middle)
+        #         total_static.thruster_pub.publish(1500)
+        #         print("-------------Finished---------------")
+        #     pass
+
+        total_static.servo_pid_controller()
+        total_static.servo_pub.publish(total_static.u_servo)
+        # print("최종",total_static.u_servo, type(total_static.u_servo))
+        total_static.thruster_pub.publish(total_static.u_thruster)
         
-        if count == 1:
-            print("11111111111")
-            if total_static.finish == True:
-                total_static.control_publish()
+        # if count == 0:
+        #     total_static.control_publish()
+        
+        # if count == 1:
+        #     print("11111111111")
+        #     if total_static.finish == True:
+        #         total_static.control_publish()
             
-        if count == 2:
-            print("2222222222222")
-            total_static.control_publish()
+        # if count == 2:
+        #     print("2222222222222")
+        #     total_static.control_publish()
 
         # if count == 3:
         #     print("33333333333333333")
@@ -384,7 +391,7 @@ def main():
         #     total_static.thruster_pub.publish(1500)
         #     print("-------------Finished---------------")
         
-        total_static.rviz_publish()
+        # total_static.rviz_publish()
         rate.sleep()
 
     rospy.spin()
