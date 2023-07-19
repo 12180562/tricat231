@@ -25,7 +25,7 @@
 	<!-- Nodes -->
 	<node pkg="tricat231_pkg"  type="heading_converter.py" name="headingConverter" respawn="true"/>
     <node pkg="tricat231_pkg" type="gnss_converter.py" name="GnssConverter" respawn="true" output="screen"/>
-	<!-- <node pkg="tricat231_pkg" type="lidar_clustering.py" name="LidarCluster" args="/dev/rplidar" respawn="true"/> -->
+	<node pkg="tricat231_pkg" type="lidar_clustering.py" name="LidarCluster" args="/dev/rplidar" respawn="true"/>
 	<node pkg="tricat231_pkg" type="total_static.py" name="TotalStatic" output="screen"/>
 	<node pkg="tricat231_pkg" type="visual.py" name="Visual" respawn="true"/>
 	<!-- <node pkg="tricat231_pkg" type="docking.py" name="Docking" respawn="true"/> -->

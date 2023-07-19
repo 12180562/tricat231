@@ -185,7 +185,7 @@ class boat_rviz:
         boat_point = PointStamped()
         boat_point.header.frame_id = self.frame_id 
         boat_point.header.stamp = rospy.Time.now()
-        boat_point.point = Vector3(self.boat_x, self.boat_y,0)
+        boat_point.point = Vector3(self.boat_x, self.boat_y, 0)
         self.pub_stamp.publish(boat_point)
 
     def publish_heading(self):
