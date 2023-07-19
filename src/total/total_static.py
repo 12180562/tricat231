@@ -367,11 +367,7 @@ def main():
         #         total_static.thruster_pub.publish(1500)
         #         print("-------------Finished---------------")
         #     pass
-
-        total_static.servo_pid_controller()
-        total_static.servo_pub.publish(total_static.u_servo)
-        # print("최종",total_static.u_servo, type(total_static.u_servo))
-        total_static.thruster_pub.publish(total_static.u_thruster)
+        total_static.control_publish()
         
         # if count == 0:
         #     total_static.control_publish()

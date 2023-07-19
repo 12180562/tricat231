@@ -20,7 +20,7 @@ thruster: 1550
 kp_servo : 0.2
 kd_servo : 0.1
 
-filter_queue_size: 10
+filter_queue_size: 1
 
 # static
 angle_number: 10
