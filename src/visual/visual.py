@@ -134,6 +134,7 @@ class boat_rviz:
     def boat_position_callback(self,msg):
         self.boat_x = msg.x
         self.boat_y = msg.y
+        
     def psi_callback(self, msg):
         self.psi = msg.data
 
@@ -146,7 +147,7 @@ class boat_rviz:
         choose_vec_arrow_end_x = length * math.cos(math.radians(self.psi)) + self.boat_x
         choose_vec_arrow_end_y = length * math.sin(math.radians(self.psi)) + self.boat_y
         choose_vec = sh.arrow_rviz(
-            name="psi",
+            name="choose_vec",
             id=ids.pop(),
             x1=self.boat_x,
             y1=self.boat_y,
@@ -166,7 +167,7 @@ class boat_rviz:
         heading_arrow_end_x = length * math.cos(math.radians(self.psi_desire)) + self.boat_x
         heading_arrow_end_y = length * math.sin(math.radians(self.psi_desire)) + self.boat_y
         heading = sh.arrow_rviz(
-            name="psi",
+            name="heading",
             id=ids.pop(),
             x1=self.boat_x,
             y1=self.boat_y,
