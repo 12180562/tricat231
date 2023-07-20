@@ -33,7 +33,9 @@ class map_rviz:
         # 분수대 오른쪽1(구글 어스 위도, 경도): 37.4483338, 126.6537511 // -254.9589107162451, 74.11673378428729
         # 분수대 오른쪽2(구글 어스 위도, 경도): 37.4487297, 126.6539784 // -211.01897805798822, 94.22933843885015
         # 분수대 왼쪽1(구글 어스 위도, 경도): 37.4483338, 126.6537511  // -254.95887062301057, 74.1167221783096
-        self.bsd = sh.Square_polygon(-254.9589107162451, 74.11673378428729)
+        point = [37.4479852, 126.6535107, 49.0]
+        point_e = gc.enu_convert(point)
+        self.bsd = sh.Square_polygon(point_e[0], point_e[1])
         self.pub_bsd = rospy.Publisher("/bsd", PolygonStamped, queue_size=10)
 
         # Waypoint
@@ -45,23 +47,24 @@ class map_rviz:
         self.end_sub = rospy.Subscriber("/end_check", Bool, self.end_callback, queue_size=10)
         self.end = False
         self.pub_waypoint1 = rospy.Publisher("/waypoint1", PolygonStamped, queue_size=10)
-        self.pub_waypoint2 = rospy.Publisher("/waypoint2", PolygonStamped, queue_size=10)
-        self.pub_waypoint3 = rospy.Publisher("/waypoint3", PolygonStamped, queue_size=10)
+        # self.pub_waypoint2 = rospy.Publisher("/waypoint2", PolygonStamped, queue_size=10)
+        # self.pub_waypoint3 = rospy.Publisher("/waypoint3", PolygonStamped, queue_size=10)
     
     def publish_map(self):
-        self.pub_bsd.publish(self.bsd)
+        # self.pub_bsd.publish(self.bsd)
         cnt = 0
         if self.end:
             cnt += 1
         if cnt < 1:
             self.pub_waypoint1.publish(self.remained_polygon[0])
-            self.pub_waypoint2.publish(self.remained_polygon[1])
-            self.pub_waypoint3.publish(self.remained_polygon[2])
+            # self.pub_waypoint2.publish(self.remained_polygon[1])
+            # self.pub_waypoint3.publish(self.remained_polygon[2])
         elif cnt == 1:
-            self.pub_waypoint2.publish(self.remained_polygon[1])
-            self.pub_waypoint3.publish(self.remained_polygon[2])
-        elif cnt == 2:
-            self.pub_waypoint3.publish(self.remained_polygon[2])
+            print("Finish")
+            # self.pub_waypoint2.publish(self.remained_polygon[1])
+            # self.pub_waypoint3.publish(self.remained_polygon[2])
+        # elif cnt == 2:
+        #     self.pub_waypoint3.publish(self.remained_polygon[2])
         else:
             print("Finish")
 
@@ -121,7 +124,7 @@ class boat_rviz:
         self.max_poses = 1000
 
         #sub
-        self.enu_pos_sub = rospy.Subscriber("/boat_position", Point, self.boat_position_callback, queue_size=1)
+        self.enu_pos_sub = rospy.Subscriber("/enu_position", Point, self.boat_position_callback, queue_size=1)
         self.psi_sub = rospy.Subscriber("/psi", Float64 , self.psi_callback, queue_size=1)
         self.psi_desire_sub = rospy.Subscriber("/psi_desire", Float64 , self.psi_desire_callback, queue_size=1)
         
@@ -144,8 +147,8 @@ class boat_rviz:
     def choose_vec_rviz(self):
         length = 1
         ids = list(range(1, 100))
-        choose_vec_arrow_end_x = length * math.cos(math.radians(self.psi)) + self.boat_x
-        choose_vec_arrow_end_y = length * math.sin(math.radians(self.psi)) + self.boat_y
+        choose_vec_arrow_end_x = length * math.cos(math.radians(self.psi_desire)) + self.boat_x
+        choose_vec_arrow_end_y = length * math.sin(math.radians(self.psi_desire)) + self.boat_y
         choose_vec = sh.arrow_rviz(
             name="choose_vec",
             id=ids.pop(),
@@ -157,15 +160,15 @@ class boat_rviz:
             color_g=255,
             color_b=0,
         )
-        choose_vec_txt = sh.text_rviz(name="choose_vec", id=5, text="choose_vec", x=choose_vec_arrow_end_x, y=choose_vec_arrow_end_y)
+        choose_vec_txt = sh.text_rviz(name="choose_vec", id=101, text="choose_vec", x=choose_vec_arrow_end_x, y=choose_vec_arrow_end_y)
         choose_vec_m = sh.marker_array_rviz([choose_vec, choose_vec_txt])
         return choose_vec_m
     
     def heading_rviz(self):
         length = 1
         ids = list(range(1, 100))
-        heading_arrow_end_x = length * math.cos(math.radians(self.psi_desire)) + self.boat_x
-        heading_arrow_end_y = length * math.sin(math.radians(self.psi_desire)) + self.boat_y
+        heading_arrow_end_x = length * math.cos(math.radians(self.psi)) + self.boat_x
+        heading_arrow_end_y = length * math.sin(math.radians(self.psi)) + self.boat_y
         heading = sh.arrow_rviz(
             name="heading",
             id=ids.pop(),
@@ -177,7 +180,7 @@ class boat_rviz:
             color_g=119,
             color_b=252,
         )
-        heading_txt = sh.text_rviz(name="heading", id=6, text="heading", x=heading_arrow_end_x, y=heading_arrow_end_y)
+        heading_txt = sh.text_rviz(name="heading", id=101, text="heading", x=heading_arrow_end_x, y=heading_arrow_end_y)
         heading_m = sh.marker_array_rviz([heading, heading_txt])
         return heading_m
 
@@ -223,7 +226,6 @@ def main():
     rate = rospy.Rate(10) # 10Hz
     try:
         while not rospy.is_shutdown():
-            
             map.publish_map()
             boat.publish_boat_position()
             boat.publish_heading()

@@ -50,11 +50,11 @@ Visualization Manager:
       Name: Grid
       Normal Cell Count: 0
       Offset:
-        X: -245
-        Y: 74
-        Z: 0
+        X: -10
+        Y: 30
+        Z: 6.019999980926514
       Plane: XY
-      Plane Cell Count: 100
+      Plane Cell Count: 200
       Reference Frame: <Fixed Frame>
       Value: true
     - Alpha: 1
@@ -142,7 +142,6 @@ Visualization Manager:
       Name: MarkerArray
       Namespaces:
         choose_vec: true
-        psi: true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -151,7 +150,6 @@ Visualization Manager:
       Name: MarkerArray
       Namespaces:
         heading: true
-        psi: true
       Queue Size: 100
       Value: true
   Enabled: true
@@ -182,25 +180,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 78.45094299316406
+      Distance: 5.6772003173828125
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
-      Field of View: 0.7853981852531433
+      Field of View: 0.7400000095367432
       Focal Point:
-        X: -6.730213165283203
-        Y: 56.37997817993164
-        Z: -39.607845306396484
+        X: -18.59870719909668
+        Y: -2.5080838203430176
+        Z: 20.989715576171875
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6253979802131653
+      Pitch: 0.7166098952293396
       Target Frame: <Fixed Frame>
-      Yaw: 4.758567810058594
+      Yaw: 3.214149236679077
     Saved: ~
 Window Geometry:
   Displays:
