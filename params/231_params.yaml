@@ -31,6 +31,8 @@ angle_number: 10  # even 계산시 1/2로 들어감
 
 detecting_angle: 30 # *2 로 들어감
 
+delta_t: 1
+
 margin: 30
 
 # fuzzy
