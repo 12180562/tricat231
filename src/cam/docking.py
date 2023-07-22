@@ -71,10 +71,7 @@ class Docking :
             # cv.imshow("RAW_IMG", raw_img)
 
         # 1. 영상 이미지 전처리
-            raw_image = cam
-            img0 = markDetection.mean_brightness(raw_image) # 평균 밝기로 보정하는 함수
-            img = cv.GaussianBlur(img0, (5, 5), 0) # 가우시안 필터 적용 # (n,n) : 가우시안 필터의 표준편차. 조정하면서 해야 함
-            hsv_image = cv.cvtColor(img, cv.COLOR_BGR2HSV) # BGR 형식의 이미지를 HSV 형식으로 전환
+            hsv_image = markDetection.image_preprocessing(cam)
 
         # 2. 탐지 색상 범위에 따라 마스크 형성
             mask = markDetection.color_filtering(self.detecting_color, hsv_image)
