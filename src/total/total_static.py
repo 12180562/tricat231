@@ -47,7 +47,7 @@ class Total_Static:
         self.servo_range = rospy.get_param("servo_range")
         self.servo_middle = int((self.servo_range[0] + self.servo_range[1]) / 2) 
         self.u_servo = self.servo_middle
-        self.u_thruster = int(rospy.get_param("thruster"))
+        self.u_thruster = int(rospy.get_param("thruster")) # 속도에 따른 서보값 변화 줘야할수도?
 
         #PID Control
         self.errSum = 0
@@ -156,7 +156,7 @@ class Total_Static:
 
     # Step 1. make 11 detecting vector
     def make_detecting_vector(self):
-        detecting_points = np.zeros([self.angle_number+1,3])
+        # detecting_points = np.zeros([self.angle_number+1,3])
         angle_list = [self.psi]
 
         for i in range(int(self.angle_number/2)):
@@ -164,15 +164,15 @@ class Total_Static:
             angle_list.append(self.psi - (i+1)*self.detecting_angle/(self.angle_number/2))
 
         for j in range(len(angle_list)):
-            detecting_points[j][0] = math.cos(angle_list[j])
-            detecting_points[j][1] = math.sin(angle_list[j])
-            detecting_points[j][2] = angle_list[j]
+            self.detecting_points[j][0] = math.cos(angle_list[j])
+            self.detecting_points[j][1] = math.sin(angle_list[j])
+            self.detecting_points[j][2] = angle_list[j]
 
-        return detecting_points
+        return self.detecting_points
     
     # Step 2. delete vector inside obstacle
     def get_crosspt(self, slope, vector_slope, start_x, start_y,end_x, end_y, OS_pos_x, OS_pos_y, after_delta_t_x, after_delta_t_y):
-
+        # 벡터 연산 모듈로 교체 예정
         x_point = [start_x, end_x]
         y_point = [start_y, end_y]
 
@@ -182,7 +182,6 @@ class Total_Static:
         else:
             cross_x = (start_x * slope - start_y - OS_pos_x * vector_slope + OS_pos_y) / (slope - vector_slope)
             cross_y = slope * (cross_x - start_x) + start_y
-            # 벡터 연산 모듈로 교체 예정
 
             if OS_pos_x <= after_delta_t_x and OS_pos_y <= after_delta_t_y:
                 if (min(x_point)-self.margin) <= cross_x <= (max(x_point)+self.margin) and (min(y_point)-self.margin) <= cross_y <= (max(y_point)+self.margin):
@@ -214,8 +213,8 @@ class Total_Static:
             static_OB_data.append(i.end.x)
             static_OB_data.append(i.end.x)
 
-        pA = np.array([self.boat_x,self.boat_y])
-        delta_t = 0.5
+        pA = np.array([self.boat_x,self.boat_y]) # 자선
+        # delta_t = 0.5
         obstacle_number = 0
 
         while (obstacle_number) != len(static_OB_data):
