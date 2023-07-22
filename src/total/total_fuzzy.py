@@ -65,8 +65,8 @@ class Total_Fuzzy:
         self.yaw_rate_sub = rospy.Subscriber("/imu/data", Imu, self.yaw_rate_callback)
         self.heading_sub = rospy.Subscriber("/heading", Float64, self.heading_callback, queue_size=1)
         self.enu_position_sub = rospy.Subscriber("/enu_position", Point, self.boat_position_callback, queue_size=1)
-        # self.lidar_sub = rospy.Subscriber("/scan", LaserScan, self.lidar_callback, queue_size=1)
-        self.obstacle_sub = rospy.Subscriber("/obstacles", ObstacleList, self.obstacle_callback, queue_size=1)
+        self.lidar_sub = rospy.Subscriber("/scan", LaserScan, self.lidar_callback, queue_size=1)
+        # self.obstacle_sub = rospy.Subscriber("/obstacles", ObstacleList, self.obstacle_callback, queue_size=1)
 
         self.servo_pub = rospy.Publisher("/servo",UInt16, queue_size=0)
         self.thruster_pub = rospy.Publisher("/thruster",UInt16, queue_size=0)
@@ -88,8 +88,8 @@ class Total_Fuzzy:
         self.psi = msg.data
 
     def boat_position_callback(self, msg):
-        self.boat_y = msg.x
-        self.boat_x = msg.y
+        self.boat_x = msg.x
+        self.boat_y = msg.y
 
     def obstacle_callback(self, msg):
         self.obstacles = msg.obstacle
@@ -104,8 +104,8 @@ class Total_Fuzzy:
         print("\n{:><70}".format("heading_calculator Connected "))
         rospy.wait_for_message("/enu_position", Point)
         print("\n{:><70}".format("gnss_converter Connected "))
-        rospy.wait_for_message("/obstacles", ObstacleList)
-        print("\n{:><70}".format("lidar_converter Connected "))
+        # rospy.wait_for_message("/obstacles", ObstacleList)
+        # print("\n{:><70}".format("lidar_converter Connected "))
         rospy.wait_for_message("/scan", LaserScan)
         print("\n{:><70}".format("LiDAR Connected "))
 
@@ -299,6 +299,7 @@ def main():
 
         if count == 0:
             total_fuzzy.servo_pub.publish(total_fuzzy.u_servo)
+            total_fuzzy.thruster_pub.publish(total_fuzzy.u_thruster)
         
         if count == 1:
             print("11111111111")

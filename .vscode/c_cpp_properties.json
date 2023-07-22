@@ -6,6 +6,7 @@
         "limitSymbolsToIncludedHeaders": false
       },
       "includePath": [
+<<<<<<< HEAD
         "/home/jaeyoon/catkin_ws/devel/include/**",
         "/opt/ros/noetic/include/**",
         "/home/jaeyoon/catkin_ws/src/kass_msgs/ctrl_msgs/include/**",
@@ -19,6 +20,15 @@
         "/home/jaeyoon/catkin_ws/src/ublox_f9p/ublox_gps/include/**",
         "/home/jaeyoon/catkin_ws/src/ublox_f9p/ublox_msgs/include/**",
         "/home/jaeyoon/catkin_ws/src/ublox_f9p/ublox_serialization/include/**",
+=======
+        "/home/ubuntu/catkin_ws/devel/include/**",
+        "/opt/ros/noetic/include/**",
+        "/home/ubuntu/catkin_ws/src/myahrs_driver/include/**",
+        "/home/ubuntu/catkin_ws/src/obstacle_detector/include/**",
+        "/home/ubuntu/catkin_ws/src/ublox_f9p/ublox_gps/include/**",
+        "/home/ubuntu/catkin_ws/src/ublox_f9p/ublox_msgs/include/**",
+        "/home/ubuntu/catkin_ws/src/ublox_f9p/ublox_serialization/include/**",
+>>>>>>> ad41c905198eb67f32d6766fb1aa63420e87ecea
         "/usr/include/**"
       ],
       "name": "ROS",
