@@ -1,10 +1,18 @@
 {
     "python.autoComplete.extraPaths": [
+<<<<<<< HEAD
+        "/home/jaeyoon/catkin_ws/devel/lib/python3/dist-packages",
+        "/opt/ros/noetic/lib/python3/dist-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/jaeyoon/catkin_ws/devel/lib/python3/dist-packages",
+=======
         "/home/ubuntu/catkin_ws/devel/lib/python3/dist-packages",
         "/opt/ros/noetic/lib/python3/dist-packages"
     ],
     "python.analysis.extraPaths": [
         "/home/ubuntu/catkin_ws/devel/lib/python3/dist-packages",
+>>>>>>> ad41c905198eb67f32d6766fb1aa63420e87ecea
         "/opt/ros/noetic/lib/python3/dist-packages"
     ]
 }

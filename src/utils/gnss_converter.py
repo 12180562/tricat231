@@ -7,6 +7,7 @@ from geometry_msgs.msg import Point
 from sensor_msgs.msg import NavSatFix
 
 origin = rospy.get_param("origin")
+# origin = [37.4480149, 126.6534485999, 49.451] # 분수대 필테 중앙
 # origin = [37.450746, 126.6549274, 55.5]
 boat = [0, 0, 0]
 
@@ -27,7 +28,6 @@ def main():
     while not rospy.is_shutdown():
         enu_position.x = boat[0]
         enu_position.y = boat[1]
-
         pub.publish(enu_position)
 
         rate.sleep()

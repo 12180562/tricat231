@@ -4,7 +4,12 @@
 import cv2 as cv
 import numpy as np
 
-def color_filtering(detecting_color, hsv_image):     # 이미지 내 특정 색상 검출 함수
+def color_set():
+    # 주황
+    [255,127,0]
+
+# 이미지 내 특정 색상 검출 함수
+def color_filtering(detecting_color, hsv_image):     
     if detecting_color == 1: # Blue
         lower_color = np.array([110, 50, 50])
         upper_color = np.array([130, 255, 255])
@@ -24,18 +29,21 @@ def color_filtering(detecting_color, hsv_image):     # 이미지 내 특정 색�
 
     return mask
 
-def shape_and_label(detecting_shape, raw_image, contours):    # 원하는 도형의 윤곽선 면적과 중심점 찾기, 도형 labelling
+# 원하는 도형의 윤곽선 면적과 중심점 찾기, 도형 labelling
+def shape_and_label(detecting_shape, raw_image, contours):    
     contour_info = []
     for contour in contours:
         approx = cv.approxPolyDP(contour, cv.arcLength(contour, True) * 0.01, True)
         
-        # cv2.approxPolyDP(curve, epsilon, closed, approxCurve=None) -> approxCurve : 외곽선을 근사화(단순화)
+        # cv2.approxPolyDP(curve, epsilon, closed, approxCurve=None) 
+        # -> approxCurve : 외곽선을 근사화(단순화)
         #   • curve: 입력 곡선 좌표. numpy.ndarray. shape=(K, 1, 2)
         #   • epsilon: 근사화 정밀도 조절. 입력 곡선과 근사화 곡선 간의 최대 거리. e.g) cv2.arcLength(curve) * 0.02
         #   • closed: True를 전달하면 폐곡선으로 인식
         #   • approxCurve: 근사화된 곡선 좌표. numpy.ndarray. shape=(K', 1, 2)
 
-        # cv2.arcLength(curve, closed) -> retval: 외곽선 길이를 반환
+        # cv2.arcLength(curve, closed) 
+        # -> retval: 외곽선 길이를 반환
         #   • curve: 외곽선 좌표. numpy.ndarray. shape=(K, 1, 2)
         #   • closed: True이면 폐곡선으로 간주
         #   • retval: 외곽선 길이 
@@ -82,19 +90,19 @@ def find_area_centroid(contour):
         else:
             return None, None      
     else :
-#        print('중심점계산오류')
+        # print('중심점계산오류')
         return None, None
 
+# 영상 이미지 전처리 함수
 def image_preprocessing(cam): 
-    # 영상 이미지 전처리 함수
     raw_image = cam
     img0 = mean_brightness(raw_image) # 평균 밝기로 보정하는 함수
     img = cv.GaussianBlur(img0, (5, 5), 0) # 가우시안 필터 적용 # (n,n) : 가우시안 필터의 표준편차. 조정하면서 해야 함
     hsv_image = cv.cvtColor(img, cv.COLOR_BGR2HSV) # BGR 형식의 이미지를 HSV 형식으로 전환
     return hsv_image
 
-def show_the_shape_contour(hsv_image,detecting_color):
-    # 탐지 범위에 따른 마스크 형성 및 외곽선 검출하는 함수   
+# 탐지 범위에 따른 마스크 형성 및 외곽선 검출하는 함수
+def show_the_shape_contour(hsv_image,detecting_color):   
     mask = color_filtering(detecting_color, hsv_image)
     contours, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE) # 컨투어 검출
     contours = np.array(contours)
@@ -161,6 +169,7 @@ def move_with_largest(contour_info, raw_image_width):
     return servo, thruster, size
 #    print(contour_info)  # Print contour_info for debugging
 
+# 트렉바로 조절 하는 방식으로 값을 먼저 찾아야 할 것 같음(대회 시작 전에)
 def mean_brightness(img):
     fixed = 100  # 이 값 주변으로 평균 밝기 조절함
     m = cv.mean(img)  # 평균 밝기
