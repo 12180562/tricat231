@@ -13,7 +13,7 @@ from skfuzzy import control as ctrl
 from geometry_msgs.msg import Point
 from std_msgs.msg import Float64, UInt16, Bool
 from sensor_msgs.msg import Imu, LaserScan
-from tricat231_pkg.msg import ObstacleList
+# from tricat231_pkg.msg import ObstacleList
 
 from utils import gnss_converter as gc
 
@@ -30,69 +30,85 @@ class Total_Fuzzy:
         self.goal_x = self.remained_waypoint[0][0]
         self.goal_y = self.remained_waypoint[0][1]
 
-        self.goal_range=rospy.get_param("goal_range")
-        self.distamce_goal = 0
+        self.goal_range = rospy.get_param("goal_range")
+        self.distance_goal = 0
         
         self.psi_desire = 0
 
         #My Boat
-        self.psi = 0
-        self.yaw_rate=0
+        self.psi = 0 # 자북 기준 heading 각도
+        self.psi_queue = []  # 헤딩을 필터링할 이동평균필터 큐
+        self.filter_queue_size = rospy.get_param("filter_queue_size")  # 이동평균필터 큐사이즈
+        self.yaw_rate = 0 # 각가속도
 
-        self.boat_x = 0
+        self.boat_x = 0 
         self.boat_y = 0
+        # self.boat_x, self.boat_y, _ = gc.enu_convert(rospy.get_param("origin"))
+        self.boat_x_queue = []  # boat_x을 필터링할 이동평균필터 큐
+        self.boat_y_queue = []  # boat_y을 필터링할 이동평균필터 큐
 
         self.servo_range = rospy.get_param("servo_range")
         self.servo_middle = int((self.servo_range[0] + self.servo_range[1]) / 2) 
         self.u_servo = self.servo_middle
-        
-        self.u_thruster = rospy.get_param("thruster")
+        self.u_thruster = int(rospy.get_param("thruster"))
 
         #PID Control
-        self.errSum=0
+        self.errSum = 0
         self.kp_servo = rospy.get_param("kp_servo")
         self.kd_servo = rospy.get_param("kd_servo")
         
         #Lidar
         self.obstacles = []
-
         self.angle_min = 0.0 
         self.angle_increment = 0.0
         self.ranges = []
         self.danger_ob = {}
 
         #ROS
-        self.yaw_rate_sub = rospy.Subscriber("/imu/data", Imu, self.yaw_rate_callback)
+        # sub
+        self.yaw_rate_sub = rospy.Subscriber("/imu/data", Imu, self.yaw_rate_callback, queue_size=1)
         self.heading_sub = rospy.Subscriber("/heading", Float64, self.heading_callback, queue_size=1)
         self.enu_position_sub = rospy.Subscriber("/enu_position", Point, self.boat_position_callback, queue_size=1)
-        self.lidar_sub = rospy.Subscriber("/scan", LaserScan, self.lidar_callback, queue_size=1)
         # self.obstacle_sub = rospy.Subscriber("/obstacles", ObstacleList, self.obstacle_callback, queue_size=1)
+        self.lidar_sub = rospy.Subscriber("/scan", LaserScan, self.lidar_callback, queue_size=1)
 
-        self.servo_pub = rospy.Publisher("/servo",UInt16, queue_size=0)
-        self.thruster_pub = rospy.Publisher("/thruster",UInt16, queue_size=0)
-        self.end_pub = rospy.Publisher("/end_check", Bool, queue_size=10)
-
-        #Initializing
-        self.cal_distance_goal()
-        self.cal_err_angle()
+        # pub
+        self.servo_pub = rospy.Publisher("/servo", UInt16, queue_size=1)
+        self.thruster_pub = rospy.Publisher("/thruster", UInt16, queue_size=1)
+        self.finish_pub = rospy.Publisher("/finish_check", Bool, queue_size=1) # YOO 카메라 관련된 네이밍 필요 
+        self.finish = False
+        
+        # rviz pub
+        self.psi_pub  = rospy.Publisher("/psi",Float64, queue_size=1)
+        self.desire_pub = rospy.Publisher("/psi_desire", Float64, queue_size=1)
+        # self.boat_pos_pub = rospy.Publisher("/boat_position", Point, queue_size=1)
+        self.end_pub = rospy.Publisher("/end_check", Bool, queue_size=1) # Yoo 도착인지 뭔지 명확한 네이밍 필요
+        self.end = False
 
         #Fuzzy
         self.fuzzy_servo_control =  0
         self.target_servo_ang = None
         self.clo=0
+
+        #Initializing
+        self.cal_distance_goal()
+        self.cal_err_angle()
     
     def yaw_rate_callback(self, msg):
         self.yaw_rate = msg.angular_velocity.z 
 
     def heading_callback(self, msg):
+        # self.psi = self.moving_avg_filter(self.psi_queue, self.filter_queue_size, msg.data)
         self.psi = msg.data
 
     def boat_position_callback(self, msg):
-        self.boat_x = msg.x
-        self.boat_y = msg.y
+        # self.boat_x = self.moving_avg_filter(self.boat_y_queue, self.filter_queue_size, msg.x)
+        # self.boat_y = self.moving_avg_filter(self.boat_x_queue, self.filter_queue_size, msg.y)
+        self.boat_x = msg.x #x=x
+        self.boat_y = msg.y #y=y
 
-    def obstacle_callback(self, msg):
-        self.obstacles = msg.obstacle
+    # def obstacle_callback(self, msg):
+    #     self.obstacles = msg.obstacle
 
     def lidar_callback(self, data):
         self.angle_min = data.angle_min
@@ -108,11 +124,18 @@ class Total_Fuzzy:
         # print("\n{:><70}".format("lidar_converter Connected "))
         rospy.wait_for_message("/scan", LaserScan)
         print("\n{:><70}".format("LiDAR Connected "))
-
         return True
+    
+    # 이동 평균 필터
+    def moving_avg_filter(self, queue, queue_size, input, use_prev=False):         
+        if not use_prev:
+            if len(queue) >= queue_size:
+                queue.pop(0)
+            queue.append(input)
+        return sum(queue) / float(len(queue))
 
     def cal_distance_goal(self):
-            self.distance_goal=math.hypot(self.boat_x-self.goal_x,self.boat_y-self.goal_y)
+            self.distance_goal = math.hypot(self.boat_x-self.goal_x, self.boat_y-self.goal_y)
 
     def end_check(self):
         self.cal_distance_goal()
@@ -120,36 +143,9 @@ class Total_Fuzzy:
 
     def next(self):
         del self.remained_waypoint[0]
+        self.goal_x=self.remained_waypoint[0][0] # x = 0
+        self.goal_y=self.remained_waypoint[0][1] # y = 1
 
-        self.goal_x=self.remained_waypoint[0][0]
-        self.goal_y=self.remained_waypoint[0][1]
-
-    def cal_err_angle(self):
-        self.psi_desire = math.degrees(math.atan2(self.goal_y - self.boat_y, self.goal_x - self.boat_x))-self.psi
-        if self.psi_desire >= 180:
-            output_angle = -180 + abs(self.psi_desire) % 180
-        elif self.psi_desire <= -180:
-            output_angle = 180 - abs(self.psi_desire) % 180
-        else:
-            output_angle = self.psi_desire
-        return output_angle
-    
-    def servo_pid_controller(self):
-        error_angle = self.cal_err_angle()
-        cp_servo = self.kp_servo * error_angle
-
-        yaw_rate = math.degrees(self.yaw_rate)
-        cd_servo = self.kd_servo * (-yaw_rate)
-
-        servo_pd = -(cp_servo + cd_servo)
-        u_servo = self.servo_middle + servo_pd
-
-        if u_servo > self.servo_range[1]:
-            u_servo = self.servo_range[1]
-        elif u_servo < self.servo_range[0]:
-            u_servo = self.servo_range[0]
-
-        return int(u_servo)
 
     def fuzzy(self):
         # Define input variables
@@ -254,6 +250,34 @@ class Total_Fuzzy:
         else:
             return False
         
+        
+    def rerange_angle(self):
+        self.psi_desire = math.degrees(math.atan2(self.goal_y - self.boat_y, self.goal_x - self.boat_x))-self.psi
+        if self.psi_desire >= 180:
+            output_angle = -180 + abs(self.psi_desire) % 180
+        elif self.psi_desire <= -180:
+            output_angle = 180 - abs(self.psi_desire) % 180
+        else:
+            output_angle = self.psi_desire
+        return output_angle
+    
+    def servo_pid_controller(self):
+        error_angle = self.rerange_angle()
+        cp_servo = self.kp_servo * error_angle
+
+        yaw_rate = math.degrees(self.yaw_rate)
+        cd_servo = self.kd_servo * (-yaw_rate)
+
+        servo_pd = int(-(cp_servo + cd_servo))
+        u_servo = self.servo_middle + servo_pd
+
+        if u_servo > self.servo_range[1]:
+            u_servo = self.servo_range[1]
+        elif u_servo < self.servo_range[0]:
+            u_servo = self.servo_range[0]
+
+        return int(u_servo)
+        
     def print_state(self):
         print(f"------------------------------------\n \
             lpp : {self.fuzzy_control_avoidance()}\n \
@@ -268,8 +292,8 @@ class Total_Fuzzy:
 def main():
     rospy.init_node("Total_Fuzzy", anonymous=False)
     rate = rospy.Rate(10) # 10 Hz
-
     total_fuzzy = Total_Fuzzy()
+    
     total_fuzzy.fuzzy() 
 
     count = 0
@@ -316,7 +340,8 @@ def main():
             total_fuzzy.servo_pub.publish(total_fuzzy.servo_middle)
             total_fuzzy.thruster_pub.publish(1500)
             print("-------------Finished---------------")
-        
+
+        total_fuzzy.rviz_publish()        
         rate.sleep()
 
     rospy.spin()

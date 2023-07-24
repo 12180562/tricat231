@@ -15,21 +15,25 @@ waypoints: [
   # [37.4480397, 126.6534791, 49.0], #분수대 중간 앞쪽
 ]
 
+
 goal_range: 1.5
 
 servo_range: [78, 113]
 
 thruster: 1650
 
-kp_servo : 0.5
-kd_servo : 0.1
+kp_servo : 5
+kd_servo : 1
 
 filter_queue_size: 10
 
-# static
-angle_number: 10  # even 계산시 1/2로 들어감 
+#controler
+controller: 1
 
-detecting_angle: 30 # *2 로 들어감
+# static
+angle_number: 10  # even 계산시 전체 앵글에 N개 
+
+detecting_angle: 30 # 해딩기준 한쪽이 N도로 들어감
 
 delta_t: 1
 
