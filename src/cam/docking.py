@@ -82,8 +82,8 @@ class Docking :
             min_area = 5000
         #    contours = contours.astype(np.float)
             
-            contour_info, raw_image = markDetection.shape_and_label(self.detecting_shape, raw_image, contours)
-            # contour_info, raw_image = markDetection.shape_and_label(self.detecting_shape, raw_image, contours, min_area)
+            # contour_info, raw_image = markDetection.shape_and_label(self.detecting_shape, raw_image, contours)
+            contour_info, raw_image = markDetection.shape_and_label(self.detecting_shape, raw_image, contours, min_area)
             cv.imshow("CONTROLLER", raw_image)
             # h,w,c = raw_image.shape # 원본 이미지에서 가로 길이 받아오기
             # move_with_largest(contour_info, w)
