@@ -81,12 +81,7 @@ class obstacle_rviz:
         self.threshold = 1000
         self.ids = deque(list(range(1,self.threshold)))
         self.obstacles = []
-<<<<<<< HEAD
-        self.boat_x = 0.0
-        self.boat_y = 0.0
-=======
         self.psi = 0
->>>>>>> 362af86d0b9af8e0186402fb9c0e1d0d2a7bb00a
         # sub
         self.enu_pos_sub = rospy.Subscriber("/enu_position", Point, self.boat_position_callback, queue_size=1)
         self.psi_sub = rospy.Subscriber("/psi", Float64 , self.psi_callback, queue_size=1)
@@ -105,17 +100,12 @@ class obstacle_rviz:
     def osbtacle_rviz(self):
         obstacle = []
         for ob in self.obstacles:
-<<<<<<< HEAD
-            obstacle.append([ob.begin.x + self.boat_x, ob.begin.y + self.boat_y])
-            obstacle.append([ob.end.x + self.boat_x, ob.end.y + self.boat_y])
-=======
             begin_x = self.boat_x + (-ob.begin.x) * cos(radians(self.psi)) - ob.begin.y * sin(radians(self.psi))
             begin_y = self.boat_y + (-ob.begin.x) * sin(radians(self.psi)) + ob.begin.y * cos(radians(self.psi))
             end_x = self.boat_x + (-ob.end.x) * cos(radians(self.psi)) - ob.end.y * sin(radians(self.psi))
             end_y = self.boat_y + (-ob.end.x) * sin(radians(self.psi)) + ob.end.y * cos(radians(self.psi))
             obstacle.append([begin_x, begin_y])
             obstacle.append([end_x, end_y])
->>>>>>> 362af86d0b9af8e0186402fb9c0e1d0d2a7bb00a
         ids = self.ids.pop()
         self.ids.append(ids)
         obstacle = sh.linelist_rviz(

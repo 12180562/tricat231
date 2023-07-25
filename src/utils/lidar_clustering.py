@@ -319,10 +319,10 @@ class Lidar_Converter:
 
         for ob in self.obstacles: # buoy + wall의 장애물 obstacles 들을 전달 msg 타입에 맞춰서 ( ex) Point.begin.x) ob_list에 넣는다
             obstacle = Obstacle()
-            obstacle.begin.x = ob.begin.x
-            obstacle.begin.y = ob.begin.y
-            obstacle.end.x = ob.end.x
-            obstacle.end.y = ob.end.y
+            obstacle.begin.x = -ob.begin.y
+            obstacle.begin.y = ob.begin.x
+            obstacle.end.x = -ob.end.y
+            obstacle.end.y = ob.end.x
             ob_list.obstacle.append(obstacle)
 
         self.obstacle_pub.publish(ob_list)

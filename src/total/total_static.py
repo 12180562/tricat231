@@ -36,9 +36,10 @@ class Total_Static:
         self.distance_goal = 0
         self.psi_desire = 0
         self.target_angle = 0
+        self.count = 0
         
         #My Boat
-        self.psi = 0 # 자북 기준 heading 각도
+        self.psi = 0 # 자북 기준 heading 각도 [degree]
         self.psi_queue = []  # 헤딩을 필터링할 이동평균필터 큐
         self.filter_queue_size = rospy.get_param("filter_queue_size")  # 이동평균필터 큐사이즈
         self.yaw_rate = 0 # 각가속도
@@ -94,9 +95,8 @@ class Total_Static:
 
         self.vector_desired = 0
         self.ob_distance = 0 # 장애물과 백터 후보가 크로스되는 점과 자선의 거리
-        self.psi_candidate = [] # cal_error_angle에서 사용되는 11,1 array 누적에 연관되어있진않음 리레인지엥글에서 사용
+        # self.psi_candidate = [] # cal_error_angle에서 사용되는 11,1 array 누적에 연관되어있진않음 리레인지엥글에서 사용
         self.delta_t = rospy.get_param("delta_t")
-        self.vector_count = 0 #살아남은 벡터가 몇개인가
         self.non_cross_vector = []
         # self.detecting_points = []
         # self.cross_check = []
@@ -152,13 +152,13 @@ class Total_Static:
 
         # self.get_trackbar_pos()
 
-    def get_trackbar_pos(self):
-        if self.controller:
-            self.u_thruster = cv2.getTrackbarPos("thruster", "controller")
-            self.kp_servo = cv2.getTrackbarPos("kp_servo", "controller") * 0.1
-            self.kd_servo = cv2.getTrackbarPos("kd_servo", "controller") * 0.1
-            self.margin = cv2.getTrackbarPos("margin", "controller")
-            self.delta_t = cv2.getTrackbarPos("delta_t", "controller")
+    # def get_trackbar_pos(self):
+    #     if self.controller:
+    #         self.u_thruster = cv2.getTrackbarPos("thruster", "controller")
+    #         self.kp_servo = cv2.getTrackbarPos("kp_servo", "controller") * 0.1
+    #         self.kd_servo = cv2.getTrackbarPos("kd_servo", "controller") * 0.1
+    #         self.margin = cv2.getTrackbarPos("margin", "controller")
+    #         self.delta_t = cv2.getTrackbarPos("delta_t", "controller")
 
     # 센서 연결 확인
     def is_all_connected(self):
@@ -188,10 +188,19 @@ class Total_Static:
         return self.distance_goal <= self.goal_range
 
     def next(self):
-        del self.remained_waypoint[0]
-        self.goal_x=self.remained_waypoint[0][0] # x = 0
-        self.goal_y=self.remained_waypoint[0][1] # y = 1
+        self.count += 1 #다시 문제가 생기면 여기 롤백
+        # del self.remained_waypoint[0]
+        self.goal_x=self.remained_waypoint[self.count][0] # x = 0
+        self.goal_y=self.remained_waypoint[self.count][1] # y = 1
+        # self.goal_x=self.remained_waypoint[0][0] # x = 0
+        # self.goal_y=self.remained_waypoint[0][1] # y = 1
 
+        # if self.count == len(self.remained_waypoint):
+        #             pass
+        # else:
+        #     self.goal_x=self.remained_waypoint[self.count][0] # x = 0
+        #     self.goal_y=self.remained_waypoint[self.count][1] # y = 1
+            
     # Step 1. make detecting vector
     def make_detecting_vector(self):
         detecting_points = np.zeros([self.angle_number+1,3])
@@ -200,17 +209,19 @@ class Total_Static:
         for i in range(int(self.angle_number/2)):
             angle_list.append(self.psi + (i+1)*self.detecting_angle/(self.angle_number/2))
             angle_list.append(self.psi - (i+1)*self.detecting_angle/(self.angle_number/2))
-
+        
+        # detecting_points = [[cos(radians(angle)), sin(radians(angle)), angle] for angle in angle_list]
         for j in range(len(angle_list)):
-            detecting_points[j][0] = math.cos(angle_list[j])
-            detecting_points[j][1] = math.sin(angle_list[j])
-            detecting_points[j][2] = angle_list[j]
+            detecting_points[j][0] = cos(radians(angle_list[j]))
+            detecting_points[j][1] = sin(radians(angle_list[j]))
+            # detecting_points[j][0] = cos(angle_list[j])
+            # detecting_points[j][1] = sin(angle_list[j])
+            detecting_points[j][2] = angle_list[j]           
 
         return detecting_points
     
     # Step 2. delete vector inside obstacle
-    def get_crosspt(self, slope, vector_slope, start_x, start_y,end_x, end_y, OS_pos_x, OS_pos_y, after_delta_t_x, after_delta_t_y):
-        # 벡터 연산 모듈로 교체 예정
+    def get_crosspt(self, slope, vector_slope, start_x, start_y, end_x, end_y, OS_pos_x, OS_pos_y, after_delta_t_x, after_delta_t_y):
         x_point = [start_x, end_x]
         y_point = [start_y, end_y]
 
@@ -225,7 +236,7 @@ class Total_Static:
                 if (min(x_point)-self.margin) <= cross_x <= (max(x_point)+self.margin) and (min(y_point)-self.margin) <= cross_y <= (max(y_point)+self.margin):
                     if OS_pos_x <= cross_x <= after_delta_t_x and OS_pos_y <= cross_y <= after_delta_t_y:
                         # print(True)
-                        self.ob_distance = math.hypot(OS_pos_x-cross_x, OS_pos_y-cross_y)
+                        # self.ob_distance = math.hypot(OS_pos_x-cross_x, OS_pos_y-cross_y)
                         return True # True가 맞음
                     else:
                         return False # False가 맞음
@@ -236,7 +247,7 @@ class Total_Static:
                 if (min(x_point)-self.margin) <= cross_x <= (max(x_point)+self.margin) and (min(y_point)-self.margin) <= cross_y <= (max(y_point)+self.margin):
                     if after_delta_t_x <= cross_x <= OS_pos_x and OS_pos_y <= cross_y <= after_delta_t_y:
                         # print(True)
-                        self.ob_distance = math.hypot(OS_pos_x-cross_x, OS_pos_y-cross_y)
+                        # self.ob_distance = math.hypot(OS_pos_x-cross_x, OS_pos_y-cross_y)
                         return True
                     else:
                         return False
@@ -247,22 +258,17 @@ class Total_Static:
         static_OB_data = []
         # print(reachableVel_global_all) # no error
         for i in self.obstacles:
-            begin_x = self.boat_x + (-i.begin.x) * cos(radians(self.psi)) - i.begin.y * sin(radians(self.psi))
-            begin_y = self.boat_y + (-i.begin.x) * sin(radians(self.psi)) + i.begin.y * cos(radians(self.psi))
-            end_x = self.boat_x + (-i.end.x) * cos(radians(self.psi)) - i.end.y * sin(radians(self.psi))
-            end_y = self.boat_y + (-i.end.x) * sin(radians(self.psi)) + i.end.y * cos(radians(self.psi))
-            static_OB_data.append(begin_x)
-            static_OB_data.append(begin_y)
-            static_OB_data.append(end_x)
-            static_OB_data.append(end_y)
-            
-            # static_OB_data.append(i.begin.x + self.boat_x)
-            # static_OB_data.append(i.begin.y + self.boat_y)
-            # static_OB_data.append(i.end.x + self.boat_x)
-            # static_OB_data.append(i.end.y + self.boat_y) # 여기 x,y도 오타 아닌지 확인
+            # begin_x = self.boat_x + (-i.begin.x) * cos(radians(self.psi)) - i.begin.y * sin(radians(self.psi))
+            # begin_y = self.boat_y + (-i.begin.x) * sin(radians(self.psi)) + i.begin.y * cos(radians(self.psi))
+            # end_x = self.boat_x + (-i.end.x) * cos(radians(self.psi)) - i.end.y * sin(radians(self.psi))
+            # end_y = self.boat_y + (-i.end.x) * sin(radians(self.psi)) + i.end.y * cos(radians(self.psi))
+            begin_x = self.boat_x + i.begin.x
+            begin_y = self.boat_y + i.begin.y
+            end_x = self.boat_x + i.end.x
+            end_y = self.boat_y + i.end.y
+            static_OB_data.extend([begin_x, begin_y, end_x, end_y])
 
-        pA = np.array([self.boat_x,self.boat_y]) # 자선
-        # delta_t = 0.5
+        pA = [self.boat_x, self.boat_y] # 자선
         obstacle_number = 0
         
         while (obstacle_number) != len(static_OB_data):
@@ -299,30 +305,34 @@ class Total_Static:
             self.non_cross_vector = []
 
             for i in range(self.angle_number+1): 
-                after_delta_t_x = reachableVel_global_all[i][0]+pA[0] * self.delta_t #원래 각도에도 델타 티 곱해지는걸 x,y에만 곱함
-                after_delta_t_y = reachableVel_global_all[i][1]+pA[1] * self.delta_t
+                after_delta_t_x = (reachableVel_global_all[i][0] + pA[0]) * self.delta_t 
+                after_delta_t_y = (reachableVel_global_all[i][1] + pA[1]) * self.delta_t
                 
-                if (pA[0]-after_delta_t_x) == 0 and (pA[1]-after_delta_t_y) < 0:
+                # if (pA[0]-after_delta_t_x) == 0 and (pA[1]-after_delta_t_y) < 0:
+                #     vector_slope = 9999
+
+                # elif (pA[0]-after_delta_t_x) == 0 and (pA[1]-after_delta_t_y) > 0:
+                #     vector_slope = -9999
+                if (after_delta_t_x-pA[0]) == 0 and (pA[1]-after_delta_t_y) < 0:
                     vector_slope = 9999
 
-                elif (pA[0]-after_delta_t_x) == 0 and (pA[1]-after_delta_t_y) > 0:
+                elif (after_delta_t_x-pA[0]) == 0 and (pA[1]-after_delta_t_y) > 0:
                     vector_slope = -9999
-                    
                 else:
-                    vector_slope = (pA[1]-after_delta_t_y)/((pA[0]-after_delta_t_x)+0.00000000000001)
-                    
+                    # vector_slope = (pA[1]-after_delta_t_y)/((pA[0]-after_delta_t_x)+0.00000000000001)
+                    vector_slope = (after_delta_t_y-pA[1])/((after_delta_t_x-pA[0])+0.00000000000001)
                 if self.get_crosspt(slope, vector_slope, obstacle_point_x[0], obstacle_point_y[0],obstacle_point_x[1], obstacle_point_y[1], pA[0], pA[1], after_delta_t_x, after_delta_t_y) == False:
-                    self.non_cross_vector.append(reachableVel_global_all[i]) # 여기가 크로스 여부 확인하여 어떻게 할지 하는 부분
+                    self.non_cross_vector.append(reachableVel_global_all[i][2]) # 여기가 크로스 여부 확인하여 어떻게 할지 하는 부분
                     # self.ob_distance = 1 
-                    if len(self.non_cross_vector) == 0:
-                        self.non_cross_vector.append(reachableVel_global_all[self.angle_number])
-                        self.non_cross_vector.append(reachableVel_global_all[self.angle_number+1])
-                        # print("NO WAY!!")
                 else: # True 일때 
-                    # print("에바야 진짜")
                     pass
+                
+            if len(self.non_cross_vector) == 0:
+                self.non_cross_vector.append(reachableVel_global_all[self.angle_number][2])
+                self.non_cross_vector.append(reachableVel_global_all[self.angle_number-1][2])
             
-            self.vector_count = len(self.non_cross_vector)
+            
+                    
             # print(len(non_cross_vector))
             # print(non_cross_vector)
         return self.non_cross_vector
@@ -334,9 +344,9 @@ class Total_Static:
     #     self.psi_candidate = self.delete_vector_inside_obstacle(self.make_detecting_vector())
     #     # print(self.psi_candidate)
     #     for i in range(len(self.psi_candidate)):
-    #         if self.psi_candidate[i][2] >= 90:
+    #         if self.psi_candidate[i][2] >= 180:
     #             output_angle.append(-180 + abs(self.psi_candidate[i][2]) % 180)
-    #         elif self.psi_candidate[i][2] <= -90:
+    #         elif self.psi_candidate[i][2] <= -180:
     #             output_angle.append(180 - abs(self.psi_candidate[i][2]) % 180)
     #         else:
     #             output_angle.append(self.psi_candidate[i][2])
@@ -352,33 +362,27 @@ class Total_Static:
         # print(len(reachableVel_global_all))
         if len(reachableVel) != 0:
             for n in range(len(reachableVel)):
-                # absNum = abs(reachableVel[n] - self.target_angle)
-                absNum = abs(reachableVel[n][2] - self.target_angle)
+                absNum = abs(reachableVel[n] - self.target_angle)
+                # absNum = abs(reachableVel[n][2] - self.target_angle)
 
                 if absNum < minNum:
                     minNum = absNum
-                    # self.vector_desired = reachableVel[n]
-                    self.vector_desired = reachableVel[n][2]
+                    self.vector_desired = reachableVel[n]
+                    # self.vector_desired = reachableVel[n][2]
         else: # 필드테스트용 예외처리
             print("choose_velocity_vector error")
-
         return self.vector_desired
     
     # Step5. PID control
     def servo_pid_controller(self):
-        start = time.time()
+        # start = time.time()
         # generate = self.make_detecting_vector()
         # cross_check = self.delete_vector_inside_obstacle(generate)
         # self.psi_desire = self.choose_velocity_vector(self.rerange_angle()) # rera
         self.psi_desire = self.choose_velocity_vector(self.delete_vector_inside_obstacle(self.make_detecting_vector()))
-        
-        # J: 카메라가 인식하면 어떻게 움직일 지 생각(self.control_angle을 직접 만지고 싶은데)
-        # if self.finish == True and self.detect == True:
-        #     self.control_angle = 
 
         control_angle = self.psi_desire - self.psi
         cp_servo = self.kp_servo * control_angle
-        # print(f"error_angle: {self.error_angle}\n")
         yaw_rate = math.degrees(self.yaw_rate)
         cd_servo = self.kd_servo * (-yaw_rate)
 
@@ -391,8 +395,8 @@ class Total_Static:
         elif self.u_servo < self.servo_range[0]:
             self.u_servo = self.servo_range[0]
 
-        end = time.time()
-        print(end - start)
+        # end = time.time()
+        # print(end - start)
         return int(self.u_servo)
     
     def control_publish(self):
@@ -407,8 +411,9 @@ class Total_Static:
               goal xy : {self.goal_x}, {self.goal_y}\n \
               psi, desire : {round(self.psi,2)}, {round(self.psi_desire,2)}\n \
               target angle: {round(self.target_angle,4)}\n \
-              arriver vector: {self.vector_count}\n \
-              servo : {self.u_servo}\n")
+              arriver vector: {len(self.non_cross_vector)}\n \
+              servo : {self.u_servo}\n \
+              count: {self.count}\n")
             #   candidate: {self.psi_candidate}\n \
 
 def main():
@@ -416,7 +421,6 @@ def main():
     rate = rospy.Rate(10) # 10 Hz
     total_static = Total_Static()
 
-    count = 0
     
     while not total_static.is_all_connected():
         rospy.sleep(0.2)
@@ -433,39 +437,42 @@ def main():
         total_static.end = total_static.end_check()
 
         if total_static.end:
-            if len(total_static.remained_waypoint) != 0:
-                total_static.next()
-                count+=1
-                print("arrive")
-                total_static.servo_pub.publish(total_static.servo_middle)
-                total_static.thruster_pub.publish(1500)
-                rospy.sleep(3)
-            else:
-                total_static.servo_pub.publish(total_static.servo_middle)
-                total_static.thruster_pub.publish(1500)
-                print("-------------Finished---------------")
-            pass
+            total_static.next()
+            print(f"{total_static.count} arrive")
+            total_static.servo_pub.publish(total_static.servo_middle)
+            total_static.thruster_pub.publish(1500)
+            rospy.sleep(3)
+            # if total_static.count == len(total_static.remained_waypoint):
+            #     total_static.servo_pub.publish(total_static.servo_middle)
+            #     total_static.thruster_pub.publish(1500)
+            #     print("-------------Finished---------------")
+            #     break
+            # else:
+            #     total_static.servo_pub.publish(total_static.servo_middle)
+            #     total_static.thruster_pub.publish(1500)
+            #     rospy.sleep(3)
+            # pass
         
-        # total_static.control_publish()
+        total_static.control_publish()
         
-        if count == 0:
-            total_static.control_publish()
+        # if count == 0:
+        #     total_static.control_publish()
         
-        if count == 1:
-            print("11111111111")
-            # dk.Docking()
-            # if total_static.finish == True:
-            #     total_static.control_publish()
-            total_static.control_publish()
-        if count == 2:
-            print("2222222222222")
-            total_static.control_publish()
-        if count == 3:
-            print("3333333333333333")
-            total_static.control_publish()
-        if count == 4:
-            print("444444444444444")
-            total_static.control_publish()
+        # if count == 1:
+        #     print("11111111111")
+        #     # dk.Docking()
+        #     # if total_static.finish == True:
+        #     #     total_static.control_publish()
+        #     total_static.control_publish()
+        # if count == 2:
+        #     print("2222222222222")
+        #     total_static.control_publish()
+        # if count == 3:
+        #     print("3333333333333333")
+        #     total_static.control_publish()
+        # if count == 4:
+        #     print("444444444444444")
+        #     total_static.control_publish()
         # if count == 3:
         #     print("33333333333333333")
         #     total_static.servo_pub.publish(total_static.servo_middle)
