@@ -18,7 +18,7 @@ from visualization_msgs.msg import MarkerArray
 from tricat231_pkg.msg import ObstacleList
 import utils.gnss_converter as gc # gnss converter인데 이거 안쓰고 total,total_hyo에서 받아오고 싶은데
 import numpy as np
-from math import sin, cos, pi
+from math import sin, cos, radians, pi
 # from urdf_parser_py.urdf import URDF
 
 # ----- 경기장----------------------------------------------------------------------------------------------------------------------#
@@ -64,7 +64,7 @@ class map_rviz:
             # self.pub_waypoint2.publish(self.remained_polygon[1])
             # self.pub_waypoint3.publish(self.remained_polygon[2])
         # elif cnt == 2:
-        #     self.pub_waypoint3.publish(self.remained_polygon[2])
+            # self.pub_waypoint3.publish(self.remained_polygon[2])
         else:
             print("Finish")
 
@@ -76,12 +76,20 @@ class map_rviz:
 # ----- Lidar 시각화----------------------------------------------------------------------------------------------------------------------#
 class obstacle_rviz:
     def __init__(self):
+        self.boat_x = 0.0
+        self.boat_y = 0.0
         self.threshold = 1000
         self.ids = deque(list(range(1,self.threshold)))
         self.obstacles = []
+<<<<<<< HEAD
         self.boat_x = 0.0
         self.boat_y = 0.0
+=======
+        self.psi = 0
+>>>>>>> 362af86d0b9af8e0186402fb9c0e1d0d2a7bb00a
         # sub
+        self.enu_pos_sub = rospy.Subscriber("/enu_position", Point, self.boat_position_callback, queue_size=1)
+        self.psi_sub = rospy.Subscriber("/psi", Float64 , self.psi_callback, queue_size=1)
         rospy.Subscriber('/obstacles',ObstacleList, self.obstacle_callback)
         rospy.Subscriber("/enu_position", Point, self.boat_position_callback, queue_size=1)
         # pub
@@ -97,8 +105,17 @@ class obstacle_rviz:
     def osbtacle_rviz(self):
         obstacle = []
         for ob in self.obstacles:
+<<<<<<< HEAD
             obstacle.append([ob.begin.x + self.boat_x, ob.begin.y + self.boat_y])
             obstacle.append([ob.end.x + self.boat_x, ob.end.y + self.boat_y])
+=======
+            begin_x = self.boat_x + (-ob.begin.x) * cos(radians(self.psi)) - ob.begin.y * sin(radians(self.psi))
+            begin_y = self.boat_y + (-ob.begin.x) * sin(radians(self.psi)) + ob.begin.y * cos(radians(self.psi))
+            end_x = self.boat_x + (-ob.end.x) * cos(radians(self.psi)) - ob.end.y * sin(radians(self.psi))
+            end_y = self.boat_y + (-ob.end.x) * sin(radians(self.psi)) + ob.end.y * cos(radians(self.psi))
+            obstacle.append([begin_x, begin_y])
+            obstacle.append([end_x, end_y])
+>>>>>>> 362af86d0b9af8e0186402fb9c0e1d0d2a7bb00a
         ids = self.ids.pop()
         self.ids.append(ids)
         obstacle = sh.linelist_rviz(
@@ -110,6 +127,13 @@ class obstacle_rviz:
         obstacle = self.osbtacle_rviz()
         markers = sh.marker_array_rviz([obstacle])
         self.rviz_pub.publish(markers)
+        
+    def boat_position_callback(self,msg):
+        self.boat_x = msg.x
+        self.boat_y = msg.y
+        
+    def psi_callback(self, msg):
+        self.psi = msg.data
 #--------------------------------------------------------------------------------------------------------------------------------------------#
 
 # ----- 배 관련 시각화(position, heading, trajectory)--------------------------------------------------------------------------------------------#

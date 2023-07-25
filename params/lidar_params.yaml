@@ -2,16 +2,16 @@
 controller: 1
 
 # 최소 스캐닝 포인트 개수
-min_input_points_size: 3
+min_input_points_size: 100
 
 # 한 그룹으로 묶을 포인트 간 거리 ( x 0.1 meters )
 max_gap_in_set: 1
 
 # 한 그룹의 점의 개수
-point_set_size: 3
+point_set_size: 100
 
 # 그룹에서부터 점까지 최대 거리 ( x 0.1 meters )
-max_dist_to_ps_line: 1
+max_dist_to_ps_line: 10
 
 # 벽이라고 인정할 최소 길이 ( x 0.1 meters )
 min_wall_length: 1

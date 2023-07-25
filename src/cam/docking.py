@@ -4,6 +4,7 @@
 import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
+import math
 import rospy
 import cv2 as cv
 import numpy as np
@@ -32,7 +33,16 @@ class Docking :
         self.thruster_pub = rospy.Publisher("/u_thruster_cam",UInt16, queue_size= 1)
         self.finish_pub = rospy.Publisher("/finish_check", Bool, queue_size=10)
         self.finish = False
-    
+
+        #Yoo
+        self.control_angle = 0
+        self.errSum = 0
+        self.kp_servo = rospy.get_param("kp_servo")
+        self.servo_range = rospy.get_param("servo_range")
+        self.servo_middle = int((self.servo_range[0] + self.servo_range[1]) / 2) 
+
+        self.u_thruster = int(rospy.get_param("thruster"))
+
     def publish_value(self, u_servo, u_thruster) :
         self.u_servo = u_servo
         self.u_thruster = u_thruster
@@ -87,10 +97,36 @@ class Docking :
             cv.imshow("CONTROLLER", raw_image)
             # h,w,c = raw_image.shape # 원본 이미지에서 가로 길이 받아오기
             # move_with_largest(contour_info, w)
-            servo_angle, thruster_value, size = markDetection.move_with_largest(contour_info, raw_image.shape[1])
+            self.control_angle, thruster_value, size = markDetection.move_with_largest(contour_info, raw_image.shape[1])
 
-            return servo_angle, thruster_value, size 
+            return self.control_angle, thruster_value, size 
+    
+    def servo_pid_controller(self):
+        # start = time.time()
+        # generate = self.make_detecting_vector()
+        # cross_check = self.delete_vector_inside_obstacle(generate)
+        self.run()
 
+        control_angle = self.control_angle
+        cp_servo = self.kp_servo * control_angle
+        # print(f"error_angle: {self.error_angle}\n")
+        # yaw_rate = math.degrees(self.yaw_rate)
+        # cd_servo = self.kd_servo * (-yaw_rate)
+
+        # servo_pd = int(-(cp_servo + cd_servo))
+
+        servo_pd = int(-cp_servo)
+        u_servo = self.servo_middle + servo_pd
+        # print(servo_pd, type(servo_pd))
+
+        if u_servo > self.servo_range[1]:
+            u_servo = self.servo_range[1]
+        elif u_servo < self.servo_range[0]:
+            u_servo = self.servo_range[0]
+
+        # end = time.time()
+        # print(end - start)
+        return int(u_servo)
     # def cam_callback(self, msg):
     # img = self.bridge.imgmsg_to_cv2(msg, "bgr8")
     # if img.size == (640 * 480 * 3):
