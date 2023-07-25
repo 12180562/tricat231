@@ -12,10 +12,10 @@ import time
 from geometry_msgs.msg import Point
 from std_msgs.msg import Float64, UInt16, Bool
 from sensor_msgs.msg import Imu
-# from sensor_msgs.msg import Imu, LaserScan
 from tricat231_pkg.msg import ObstacleList
 
 from utils import gnss_converter as gc
+from utils import static_obstacle_cal as st
 
 class Total_Static:
     def __init__(self):
@@ -39,11 +39,10 @@ class Total_Static:
         self.psi = 0 # 자북 기준 heading 각도
         self.psi_queue = []  # 헤딩을 필터링할 이동평균필터 큐
         self.filter_queue_size = rospy.get_param("filter_queue_size")  # 이동평균필터 큐사이즈
-        self.yaw_rate = 0 # 각가속도
+        self.yaw_rate = 0 # 각가속도 / PD 제어에서 사용
 
         self.boat_x = 0 
         self.boat_y = 0
-        # self.boat_x, self.boat_y, _ = gc.enu_convert(rospy.get_param("origin"))
         self.boat_x_queue = []  # boat_x을 필터링할 이동평균필터 큐
         self.boat_y_queue = []  # boat_y을 필터링할 이동평균필터 큐
 
@@ -52,7 +51,7 @@ class Total_Static:
         self.u_servo = self.servo_middle
         self.u_thruster = int(rospy.get_param("thruster")) # 속도에 따른 서보값 변화 줘야할수도?
 
-        #PID Control
+        #PD Control
         self.errSum = 0
         self.kp_servo = rospy.get_param("kp_servo")
         self.kd_servo = rospy.get_param("kd_servo")
@@ -70,7 +69,6 @@ class Total_Static:
         self.heading_sub = rospy.Subscriber("/heading", Float64, self.heading_callback, queue_size=1)
         self.enu_position_sub = rospy.Subscriber("/enu_position", Point, self.boat_position_callback, queue_size=1)
         self.obstacle_sub = rospy.Subscriber("/obstacles", ObstacleList, self.obstacle_callback, queue_size=1)
-        # self.lidar_sub = rospy.Subscriber("/scan", LaserScan, self.lidar_callback, queue_size=1)
 
         # pub
         self.servo_pub = rospy.Publisher("/servo", UInt16, queue_size=1)
@@ -162,7 +160,7 @@ class Total_Static:
 
     # Step 1. make detecting vector
     def make_detecting_vector(self):
-        # detecting_points = np.zeros([self.angle_number+1,3])
+        detecting_points = np.zeros([self.angle_number+1,3])
         angle_list = [self.psi]
 
         for i in range(int(self.angle_number/2)):
@@ -170,11 +168,11 @@ class Total_Static:
             angle_list.append(self.psi - (i+1)*self.detecting_angle/(self.angle_number/2))
 
         for j in range(len(angle_list)):
-            self.detecting_points[j][0] = math.cos(angle_list[j])
-            self.detecting_points[j][1] = math.sin(angle_list[j])
-            self.detecting_points[j][2] = angle_list[j]
+            detecting_points[j][0] = math.cos(angle_list[j])
+            detecting_points[j][1] = math.sin(angle_list[j])
+            detecting_points[j][2] = angle_list[j]
 
-        return self.detecting_points
+        return detecting_points
     
     # Step 2. delete vector inside obstacle
     def get_crosspt(self, slope, vector_slope, start_x, start_y,end_x, end_y, OS_pos_x, OS_pos_y, after_delta_t_x, after_delta_t_y):

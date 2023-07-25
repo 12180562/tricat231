@@ -79,19 +79,26 @@ class obstacle_rviz:
         self.threshold = 1000
         self.ids = deque(list(range(1,self.threshold)))
         self.obstacles = []
+        self.boat_x = 0.0
+        self.boat_y = 0.0
         # sub
         rospy.Subscriber('/obstacles',ObstacleList, self.obstacle_callback)
+        rospy.Subscriber("/enu_position", Point, self.boat_position_callback, queue_size=1)
         # pub
         self.rviz_pub = rospy.Publisher("/obstacles_rviz", MarkerArray, queue_size=10)
         
     def obstacle_callback(self,msg):
         self.obstacles = msg.obstacle
 
+    def boat_position_callback(self, msg):
+        self.boat_x = msg.x
+        self.boat_y = msg.y
+
     def osbtacle_rviz(self):
         obstacle = []
         for ob in self.obstacles:
-            obstacle.append([ob.begin.x, ob.begin.y])
-            obstacle.append([ob.end.x, ob.end.y])
+            obstacle.append([ob.begin.x + self.boat_x, ob.begin.y + self.boat_y])
+            obstacle.append([ob.end.x + self.boat_x, ob.end.y + self.boat_y])
         ids = self.ids.pop()
         self.ids.append(ids)
         obstacle = sh.linelist_rviz(
