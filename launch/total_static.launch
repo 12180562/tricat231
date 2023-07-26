@@ -2,43 +2,35 @@
 
 <launch>
 	<!--LiDAR-->
-	<!-- <include file="$(find rplidar_ros)/launch/rplidar.launch" /> -->
-	<!-- <node name="rplidarNode"          pkg="rplidar_ros"  type="rplidarNode">
+	<!-- <include file="$(find rplidar_ros)/launch/rplidar.launch" />  -->
+	<node name="rplidarNode"          pkg="rplidar_ros"  type="rplidarNode">
 		<param name="serial_port"         type="string" value="/dev/ttyLiDAR"/>  
 		<param name="serial_baudrate"     type="int"    value="256000"/>
 		<param name="frame_id"            type="string" value="laser"/>
 		<param name="inverted"            type="bool"   value="false"/>
 		<param name="angle_compensate"    type="bool"   value="true"/>
 		<param name="scan_mode"           type="string" value="Stability"/>
-	</node> -->
+	</node>
 
 	<!--GPS-->
 	<!-- <include file="$(find ntrip_ros)/launch/ntrip_ros.launch"></include> -->
 	<!-- <include file="$(find ntrip_ros_python3)/launch/ntrip_ros.launch"></include> -->
 
 	<!--IMU-->
-	<!-- <node pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">
+	<node pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">
 		<param name="port" value="/dev/ttyIMU" />
 		<param name="baud_rate" value="115200" />
-	</node> -->
+	</node>
 
 	<!-- Nodes -->
 	<node pkg="tricat231_pkg"  type="heading_converter.py" name="headingConverter" respawn="true"/>
     <node pkg="tricat231_pkg" type="gnss_converter.py" name="GnssConverter" respawn="true" output="screen"/>
 	<node pkg="tricat231_pkg" type="lidar_clustering.py" name="LidarCluster" args="/dev/rplidar" respawn="true"/>
-<<<<<<< HEAD
-	<node pkg="tricat231_pkg" type="total_static.py" name="TotalStatic" output="screen"/>
-	<!-- <node pkg="tricat231_pkg" type="new.py" name="TotalStatic" output="screen"/> -->
-	<!-- <node pkg="tricat231_pkg" type="visual.py" name="Visual" respawn="true"/> -->
-	<!-- <node pkg="tricat231_pkg" type="docking.py" name="Docking" respawn="true"/> -->
-	<!-- <node pkg="rviz" type="rviz" name="visual_rviz" args="-d $(find tricat231_pkg)/rviz/tricat231.rviz"/> -->
-=======
 	<!-- <node pkg="tricat231_pkg" type="total_static.py" name="TotalStatic" output="screen"/> -->
 	<node pkg="tricat231_pkg" type="new.py" name="TotalStatic" output="screen"/>
 	<node pkg="tricat231_pkg" type="visual.py" name="Visual" respawn="true"/>
 	<!-- <node pkg="tricat231_pkg" type="docking.py" name="Docking" respawn="true"/> -->
 	<node pkg="rviz" type="rviz" name="visual_rviz" args="-d $(find tricat231_pkg)/rviz/tricat231.rviz"/>
->>>>>>> 44e6cab9a8780220de0fb75f6f79d10c3041870a
 	<!-- <node pkg="tricat231_pkg" type="serial_node.py" name="ARDUINO" args="/dev/ttyARDUINO" respawn="true"/> -->
 
 	<!-- Record -->

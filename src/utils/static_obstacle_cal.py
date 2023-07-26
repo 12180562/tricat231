@@ -28,7 +28,7 @@ class staticOB_cal:
 
         # 보트와 장애물의 위치에 대한 행렬식 계산
         self.boat_con = self.vector_x*self.boat_y - self.vector_y*self.boat_x
-        self.ob_con = self.end_y*self.start_x - self.start_y*self.end_x
+        self.ob_con = self.end_x*self.start_y - self.start_x*self.end_y
 
         # 교차점 검사에 사용되는 거리 범위
         self.range = range
@@ -58,13 +58,15 @@ class staticOB_cal:
         self.cal_cross()
 
         # 교차점이 장애물 내부에 있고, 보트와의 거리가 주어진 범위 내에 있는지 확인
-        if self.start_x < self.point[0] < self.end_x and self.start_y < self.point[1] < self.end_y:
-            if self.cal_dist() < self.range:
+        if self.start_x <= self.point[0] <= self.end_x and self.start_y <= self.point[1] <= self.end_y:
+            if self.cal_dist() <= self.range:
                 return True
             else:
                 return False
         else:
             return False
+        
+# 역행렬이 되어서 if문이 안도는 경우 제외하고는 맞음
 
 
 # class staticOB_cal:
@@ -98,8 +100,8 @@ class staticOB_cal:
 #         if(A.det()==0): # 부정이나 불능인 경우 예외 처리
 #             return False
 #         else:
-#             B = Matrix().twobyone(self.boat_con,self.ob_con,0,0)
-#             X = np.dot(A.twobytwo_reverse(),B)
+#             B = Matrix(self.boat_con,self.ob_con,0,0)
+#             X = np.dot(A.twobytwo_reverse(),B.twobyone())
 #             self.point = [X[0],X[1]]
 #             return self.point
     
@@ -110,11 +112,11 @@ class staticOB_cal:
 #         self.cal_cross()
 #         if(self.start_x < self.point[0] < self.end_x and self.start_y < self.point[1] < self.end_y):
 #             if(self.cal_dist() < self.range):
-#                 return True
+#                 return int(0)
 #             else:
-#                 return False
+#                 return int(1)
 #         else:
-#             return False
+#             return int(2)
             
 # class Matrix:
 #     def __init__(self, a, b, c, d):
@@ -133,7 +135,8 @@ class staticOB_cal:
 #         return self.a*self.d-self.b*self.c
     
 #     def twobytwo_reverse(self):
-#         return (1/self.det())*np.array([self.d,-self.b],[self.c,self.a])
+#         det = self.det()
+#         return (1/det)*np.array([self.d,-self.b],[self.c,self.a])
 
 
 '''
@@ -142,7 +145,7 @@ class staticOB_cal:
 #-- 생성한 벡터를 통해 만들어지는 직선의 방정식 --#
 
 한 점(x_s,y_s)과 하나의 벡터(a,b)를 알고 있는 경우 직선의 방정식: (x-x_s)/a = (y-y_s)/b 
-이를 정리하면 a*y - b*x = a*y_s + b*x_s
+이를 정리하면 a*y - b*x = a*y_s - b*x_s
 여기서 한 점은 선박의 위치이므로 boat_x,boat_y와 동일
 
 #-- obstacle의 정보를 통해 만들어지는 직선의 방정식 --#
@@ -155,7 +158,7 @@ class staticOB_cal:
 
 여기서부터는 numpy를 이용하여 행렬을 표현, numpy에 관한 설명은 인터넷 참조 바람
 
-np.array([a, -b],[start_y - end_y, end_x - start_x]).dot(np.array([x],[y])) = np.array([a*y_s + b*x_s],[end_x*start_y - start_x*end_y])
+np.array([a, -b],[start_y - end_y, end_x - start_x]).dot(np.array([x],[y])) = np.array([a*y_s - b*x_s],[end_x*start_y - start_x*end_y])
 
 연립일차방정식 AX=B에 대해서 A의 역행렬이 존재하는 경우 양변에 A의 역행렬을 곱해서 미지수 X의 해를 구할 수 있음
 만약 A의 역행렬이 없으면 연립일차방정식은 불능(해가 없음) 또는 부정(해가 무수히 많음)이다.
