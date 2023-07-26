@@ -97,7 +97,7 @@ class Total_Static:
         self.ob_distance = 0 # 장애물과 백터 후보가 크로스되는 점과 자선의 거리
         # self.psi_candidate = [] # cal_error_angle에서 사용되는 11,1 array 누적에 연관되어있진않음 리레인지엥글에서 사용
         self.delta_t = rospy.get_param("delta_t")
-        self.non_cross_vector = []
+        # self.non_cross_vector = []
         # self.detecting_points = []
         # self.cross_check = []
 
@@ -214,10 +214,10 @@ class Total_Static:
             elif angle_list[j] < -180:
                 detecting_points[j][2] = 180 - abs(angle_list[j]) % 180
             else:
-                detecting_points[j][2] = angle_list[j]
-            # detecting_points[j][2] = angle_list[j]        
+                detecting_points[j][2] = angle_list[j]     
 
         return detecting_points
+    
     
     # Step 2. delete vector inside obstacle
     def get_crosspt(self, slope, vector_slope, start_x, start_y,end_x, end_y, OS_pos_x, OS_pos_y, after_delta_t_x, after_delta_t_y):
@@ -235,7 +235,7 @@ class Total_Static:
                 if (min(x_point)-self.margin) <= cross_x <= (max(x_point)+self.margin) and (min(y_point)-self.margin) <= cross_y <= (max(y_point)+self.margin):
                     if OS_pos_x <= cross_x <= after_delta_t_x and OS_pos_y <= cross_y <= after_delta_t_y:
                         # print(True)
-                        self.ob_distance = math.hypot(OS_pos_x-cross_x, OS_pos_y-cross_y)
+                        # self.ob_distance = math.hypot(OS_pos_x-cross_x, OS_pos_y-cross_y)
                         return True # True가 맞음
                     else:
                         return False # False가 맞음
@@ -246,7 +246,7 @@ class Total_Static:
                 if (min(x_point)-self.margin) <= cross_x <= (max(x_point)+self.margin) and (min(y_point)-self.margin) <= cross_y <= (max(y_point)+self.margin):
                     if after_delta_t_x <= cross_x <= OS_pos_x and OS_pos_y <= cross_y <= after_delta_t_y:
                         # print(True)
-                        self.ob_distance = math.hypot(OS_pos_x-cross_x, OS_pos_y-cross_y)
+                        # self.ob_distance = math.hypot(OS_pos_x-cross_x, OS_pos_y-cross_y)
                         return True
                     else:
                         return False
@@ -297,7 +297,8 @@ class Total_Static:
             else: 
                 slope = (obstacle_point_y[1]-obstacle_point_y[0])/((obstacle_point_x[1]-obstacle_point_x[0])+0.00000001) # 갑자기 제로 디비전 에러 (해결하진 못함)
 
-            self.non_cross_vector = []
+            # self.non_cross_vector = []
+            non_cross_vector = []
 
             for i in range(self.angle_number+1): 
                 after_delta_t_x = (reachableVel_global_all[i][0] + pA[0]) * self.delta_t 
@@ -317,20 +318,19 @@ class Total_Static:
                     # vector_slope = (pA[1]-after_delta_t_y)/((pA[0]-after_delta_t_x)+0.00000000000001)
                     vector_slope = (after_delta_t_y-pA[1])/((after_delta_t_x-pA[0])+0.00000000000001)
                 if self.get_crosspt(slope, vector_slope, obstacle_point_x[0], obstacle_point_y[0],obstacle_point_x[1], obstacle_point_y[1], pA[0], pA[1], after_delta_t_x, after_delta_t_y) == False:
-                    self.non_cross_vector.append(reachableVel_global_all[i]) # 여기가 크로스 여부 확인하여 어떻게 할지 하는 부분
+                    non_cross_vector = np.append(non_cross_vector,reachableVel_global_all[i][2]) # 여기가 크로스 여부 확인하여 어떻게 할지 하는 부분
                     # self.ob_distance = 1 
                 else: # True 일때 
                     pass
                 
-            if len(self.non_cross_vector) == 0:
-                self.non_cross_vector.append(reachableVel_global_all[self.angle_number])
-                self.non_cross_vector.append(reachableVel_global_all[self.angle_number-1])
-            
+            if len(non_cross_vector) == 0:
+                non_cross_vector = np.append(non_cross_vector,reachableVel_global_all[self.angle_number][2])
+                non_cross_vector = np.append(non_cross_vector,reachableVel_global_all[self.angle_number-1][2])            
             
                     
             # print(len(non_cross_vector))
             # print(non_cross_vector)
-        return self.non_cross_vector
+        return non_cross_vector
         
     # Step3. rerange angle (We think about this more)
     # def rerange_angle(self):
@@ -354,15 +354,15 @@ class Total_Static:
         # sunse = 0
         minNum = 9999999
         vector_desired = 0 
-        self.target_angle = math.degrees(math.atan2(self.goal_y - self.boat_y, self.goal_x - self.boat_x)) + 6.5 # 6.5는 자북과 진북의 차이 #enu도 진북 기준임/ 의문은 아직 덜 해소됨
+        target_angle = math.degrees(math.atan2(self.goal_y - self.boat_y, self.goal_x - self.boat_x)) + 6.5 # 6.5는 자북과 진북의 차이 #enu도 진북 기준임/ 의문은 아직 덜 해소됨
         # print(reachableVel)
         # print(len(reachableVel_global_all))
         for n in range(len(reachableVel)):
-            # absNum = abs(reachableVel[n] - self.target_angle)
-            absNum = abs(reachableVel[n][2] - self.target_angle)
-            if absNum > 180:
+            # absNum = abs(reachableVel[n] - target_angle)
+            absNum = abs(reachableVel[n][2] - target_angle)
+            if absNum >= 180:
                 absNum = abs(-180 + abs(absNum) % 180)
-            elif absNum < -180:
+            elif absNum <= -180:
                 absNum = abs(180 - abs(absNum) % 180)
             else:
                 absNum  
@@ -370,11 +370,12 @@ class Total_Static:
             if absNum < minNum:
                 minNum = absNum
                 # sunse = n
-                # self.vector_desired = reachableVel[n]
+                # vector_desired = reachableVel[n]
                 vector_desired = reachableVel[n][2]
-            # else:
+            else:
+                pass
             #     self.vector_desired = self.target_angle
-        # print(sunse)
+        print(vector_desired)
         return vector_desired
     
     # Step5. PID control
@@ -383,9 +384,9 @@ class Total_Static:
         # generate = self.make_detecting_vector()
         # cross_check = self.delete_vector_inside_obstacle(generate)
         # self.psi_desire = self.choose_velocity_vector(self.rerange_angle()) # rera
-        self.psi_desire = self.choose_velocity_vector(self.delete_vector_inside_obstacle(self.make_detecting_vector()))
-        # self.psi_desire = self.choose_velocity_vector(self.make_detecting_vector())
-        control_angle = self.psi_desire - self.psi
+        # psi_desire = self.choose_velocity_vector(self.delete_vector_inside_obstacle(self.make_detecting_vector()))
+        psi_desire = self.choose_velocity_vector(self.make_detecting_vector())
+        control_angle = psi_desire - self.psi
         if control_angle >= 180:
             control_angle = -180 + abs(control_angle) % 180
         elif control_angle <= -180:
@@ -423,10 +424,10 @@ class Total_Static:
               psi, desire : {round(self.psi,2)}, {round(self.psi_desire,2)}\n \
               target angle: {round(self.target_angle,4)}\n \
               ob_distance: {self.ob_distance}\n \
-              arriver vector: {len(self.non_cross_vector)}\n \
               servo : {self.u_servo}\n \
               count: {self.count}\n")
             #   candidate: {self.psi_candidate}\n \
+            #   arriver vector: {len(self.non_cross_vector)}\n \
 
 def main():
     rospy.init_node("Total_Static", anonymous=False)
