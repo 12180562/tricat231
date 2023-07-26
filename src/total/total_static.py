@@ -7,7 +7,6 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 import math
 import rospy
 import numpy as np
-import time
 import cv2
 
 from geometry_msgs.msg import Point
@@ -18,7 +17,7 @@ from tricat231_pkg.msg import ObstacleList
 from math import sin, cos, radians
 
 from utils import gnss_converter as gc
-# from cam import docking as dk
+
 class Total_Static:
     def __init__(self):
         #Goal
@@ -217,8 +216,7 @@ class Total_Static:
                 detecting_points[j][2] = angle_list[j]     
 
         return detecting_points
-    
-    
+
     # Step 2. delete vector inside obstacle
     def get_crosspt(self, slope, vector_slope, start_x, start_y,end_x, end_y, OS_pos_x, OS_pos_y, after_delta_t_x, after_delta_t_y):
         x_point = [start_x, end_x]
@@ -300,7 +298,7 @@ class Total_Static:
             # self.non_cross_vector = []
             non_cross_vector = []
 
-            for i in range(self.angle_number+1): 
+            for i in range(self.angle_number): 
                 after_delta_t_x = (reachableVel_global_all[i][0] + pA[0]) * self.delta_t 
                 after_delta_t_y = (reachableVel_global_all[i][1] + pA[1]) * self.delta_t
                 
@@ -327,39 +325,21 @@ class Total_Static:
                 non_cross_vector = np.append(non_cross_vector,reachableVel_global_all[self.angle_number][2])
                 non_cross_vector = np.append(non_cross_vector,reachableVel_global_all[self.angle_number-1][2])            
             
-                    
-            # print(len(non_cross_vector))
+        print(len(non_cross_vector))
             # print(non_cross_vector)
         return non_cross_vector
         
-    # Step3. rerange angle (We think about this more)
-    # def rerange_angle(self):
-    #     output_angle = []
-        
-    #     self.psi_candidate = self.delete_vector_inside_obstacle(self.make_detecting_vector())
-    #     # print(self.psi_candidate)
-    #     for i in range(len(self.psi_candidate)):
-    #         if self.psi_candidate[i][2] >= 180:
-    #             output_angle.append(-180 + abs(self.psi_candidate[i][2]) % 180)
-    #         elif self.psi_candidate[i][2] <= -180:
-    #             output_angle.append(180 - abs(self.psi_candidate[i][2]) % 180)
-    #         else:
-    #             output_angle.append(self.psi_candidate[i][2])
-    #     # print(f"rerange angle: {output_angle}\n")
-        
-    #     return output_angle
-
     # Step4. choose vector
     def choose_velocity_vector(self,reachableVel):
-        # sunse = 0
+
         minNum = 9999999
         vector_desired = 0 
         target_angle = math.degrees(math.atan2(self.goal_y - self.boat_y, self.goal_x - self.boat_x)) + 6.5 # 6.5는 자북과 진북의 차이 #enu도 진북 기준임/ 의문은 아직 덜 해소됨
-        # print(reachableVel)
-        # print(len(reachableVel_global_all))
+        print(target_angle)
+        
         for n in range(len(reachableVel)):
-            # absNum = abs(reachableVel[n] - target_angle)
-            absNum = abs(reachableVel[n][2] - target_angle)
+            absNum = abs(reachableVel[n] - target_angle)
+            # absNum = abs(reachableVel[n][2] - target_angle)
             if absNum >= 180:
                 absNum = abs(-180 + abs(absNum) % 180)
             elif absNum <= -180:
@@ -369,23 +349,21 @@ class Total_Static:
 
             if absNum < minNum:
                 minNum = absNum
-                # sunse = n
-                # vector_desired = reachableVel[n]
-                vector_desired = reachableVel[n][2]
+
+                vector_desired = reachableVel[n]
+                # vector_desired = reachableVel[n][2]
             else:
                 pass
-            #     self.vector_desired = self.target_angle
+
         print(vector_desired)
         return vector_desired
     
     # Step5. PID control
     def servo_pid_controller(self):
-        start = time.time()
-        # generate = self.make_detecting_vector()
-        # cross_check = self.delete_vector_inside_obstacle(generate)
-        # self.psi_desire = self.choose_velocity_vector(self.rerange_angle()) # rera
-        # psi_desire = self.choose_velocity_vector(self.delete_vector_inside_obstacle(self.make_detecting_vector()))
-        psi_desire = self.choose_velocity_vector(self.make_detecting_vector())
+
+        psi_desire = self.choose_velocity_vector(self.delete_vector_inside_obstacle(self.make_detecting_vector()))
+        # psi_desire = self.choose_velocity_vector(self.make_detecting_vector())
+        
         control_angle = psi_desire - self.psi
         if control_angle >= 180:
             control_angle = -180 + abs(control_angle) % 180
@@ -393,22 +371,19 @@ class Total_Static:
             control_angle = 180 - abs(control_angle) % 180
         else:
             control_angle
-                
+            
         cp_servo = self.kp_servo * control_angle
         yaw_rate = math.degrees(self.yaw_rate)
         cd_servo = self.kd_servo * (-yaw_rate)
 
         servo_pd = int(-(cp_servo + cd_servo))
         self.u_servo = self.servo_middle + servo_pd
-        # print(servo_pd, type(servo_pd))
 
         if self.u_servo > self.servo_range[1]:
             self.u_servo = self.servo_range[1]
         elif self.u_servo < self.servo_range[0]:
             self.u_servo = self.servo_range[0]
 
-        end = time.time()
-        # print(end - start)
         return int(self.u_servo)
     
     def control_publish(self):
@@ -445,7 +420,7 @@ def main():
             break
 
         total_static.cal_distance_goal()
-        total_static.print_state()
+        # total_static.print_state()
         
         total_static.end = total_static.end_check()
 
