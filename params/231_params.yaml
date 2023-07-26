@@ -34,7 +34,7 @@ filter_queue_size: 10
 controller: 0
 
 # static
-angle_number: 10  # even 계산시 전체 앵글에 N개 
+angle_number: 12  # even 계산시 전체 앵글에 N개 
 
 detecting_angle: 60 # 해딩기준 한쪽이 N도로 들어감
 

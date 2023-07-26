@@ -212,7 +212,14 @@ class Total_Static:
         for j in range(len(angle_list)):
             detecting_points[j][0] = math.cos(radians(angle_list[j]))
             detecting_points[j][1] = math.sin(radians(angle_list[j]))
-            detecting_points[j][2] = angle_list[j]
+
+            if angle_list[j] >= 180:
+                detecting_points[j][2] = -180 + abs(angle_list[j]) % 180
+            elif angle_list[j] <= -180:
+                detecting_points[j][2] = 180 - abs(angle_list[j]) % 180
+            else:
+                detecting_points[j][2] = angle_list[j]
+            # detecting_points[j][2] = angle_list[j]
 
         return detecting_points
     
@@ -358,23 +365,21 @@ class Total_Static:
 
     # Step4. choose vector
     def choose_velocity_vector(self,reachableVel):
-        minNum = 180
+        sunse = 0
+        minNum = 9999999
         self.target_angle = math.degrees(math.atan2(self.goal_y - self.boat_y, self.goal_x - self.boat_x)) + 6.5 # 6.5는 자북과 진북의 차이 #enu도 진북 기준임/ 의문은 아직 덜 해소됨
-        
+        print(reachableVel)
         # print(len(reachableVel_global_all))
-        if len(reachableVel) != 0:
-            for n in range(len(reachableVel)):
-                # absNum = abs(reachableVel[n] - self.target_angle)
-                absNum = abs(reachableVel[n][2] - self.target_angle)
-
-                if absNum < minNum:
-                    minNum = absNum
-                    # self.vector_desired = reachableVel[n]
-                    self.vector_desired = reachableVel[n][2]
-        else: # 필드테스트용 예외처리
-            print("choose_velocity_vector error")
-
-        return self.vector_desired
+        for n in range(len(reachableVel)):
+            # absNum = abs(reachableVel[n] - self.target_angle)
+            absNum = abs(reachableVel[n][2] - self.target_angle)
+            if absNum < minNum:
+                minNum = absNum
+                sunse = n
+                # self.vector_desired = reachableVel[n]
+                vector_desired = reachableVel[n][2]
+        print(sunse)
+        return vector_desired
     
     # Step5. PID control
     def servo_pid_controller(self):
@@ -382,7 +387,9 @@ class Total_Static:
         # generate = self.make_detecting_vector()
         # cross_check = self.delete_vector_inside_obstacle(generate)
         # self.psi_desire = self.choose_velocity_vector(self.rerange_angle()) # rera
-        self.psi_desire = self.choose_velocity_vector(self.delete_vector_inside_obstacle(self.make_detecting_vector()))
+        # self.psi_desire = self.choose_velocity_vector(self.delete_vector_inside_obstacle(self.make_detecting_vector()))
+        self.psi_desire = self.choose_velocity_vector((self.make_detecting_vector()))
+
 
         control_angle = self.psi_desire - self.psi
         cp_servo = self.kp_servo * control_angle
