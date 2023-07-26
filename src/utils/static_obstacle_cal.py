@@ -7,73 +7,133 @@ import numpy as np
 from math import sqrt
 import queue
 
+
 class staticOB_cal:
     def __init__(self, boat_x, boat_y, vector_x, vector_y, start_x, start_y, end_x, end_y, range):
-        # boat position
+        # 보트의 위치 및 벡터
         self.boat_x = boat_x 
         self.boat_y = boat_y
-        # boat vector
         self.vector_x = vector_x
         self.vector_y = vector_y
 
-        # obstacle
+        # 장애물의 시작점과 끝점
         self.start_x = start_x
         self.start_y = start_y
         self.end_x = end_x
         self.end_y = end_y
 
-        # matrix cal
+        # 장애물의 x 및 y 범위
         self.sub_x = self.end_x-self.start_x
         self.sub_y = self.end_y-self.start_y
-        self.boat_con = self.vector_x*self.boat_y + self.vector_y*self.boat_x
-        self.ob_con = self.end_x*self.start_y - self.start_x*self.end_y
+
+        # 보트와 장애물의 위치에 대한 행렬식 계산
+        self.boat_con = self.vector_x*self.boat_y - self.vector_y*self.boat_x
+        self.ob_con = self.end_y*self.start_x - self.start_y*self.end_x
+
+        # 교차점 검사에 사용되는 거리 범위
+        self.range = range
+
+        # 교차점 초기화
         self.point = [0, 0]
 
-        # cross check
-        self.range = range
-        self.dist = 0
-
     def cal_cross(self):
-        A = Matrix(self.vector_x, -self.vector_y, self.sub_x, self.sub_y)
-        if(A.det()==0): # 부정이나 불능인 경우 예외 처리
-            return False
-        else:
-            B = Matrix().twobyone(self.boat_con,self.ob_con,0,0)
-            X = np.dot(A.twobytwo_reverse(),B)
-            self.point = [X[0],X[1]]
-            return self.point
-    
+        # 보트 벡터와 장애물 위치를 사용해 행렬 A 생성
+        A = np.array([[self.vector_x, -self.vector_y], [self.sub_x, self.sub_y]])
+
+        # 보트와 장애물에 대한 행렬식을 사용해 행렬 B 생성
+        B = np.array([self.boat_con, self.ob_con])
+
+        # 행렬 A의 행렬식이 0이 아니라면 (즉, 행렬 A가 역행렬을 가질 수 있다면)
+        if np.linalg.det(A) != 0: 
+            # 행렬 A의 역행렬과 행렬 B를 곱하여 교차점 계산
+            X = np.dot(np.linalg.inv(A), B)
+            self.point = [X[0], X[1]]
+
     def cal_dist(self):
-        return sqrt((self.point[0] - self.boat_x)**2+(self.point[1] - self.boat_y)**2)
-        
+        # 보트와 교차점 사이의 유클리디안 거리 계산
+        return sqrt((self.point[0] - self.boat_x)**2 + (self.point[1] - self.boat_y)**2)
+
     def cross_check(self):
+        # 교차점 계산
         self.cal_cross()
-        if(self.start_x < self.point[0] < self.end_x and self.start_y < self.point[1] < self.end_y):
-            if(self.cal_dist() < self.range):
+
+        # 교차점이 장애물 내부에 있고, 보트와의 거리가 주어진 범위 내에 있는지 확인
+        if self.start_x < self.point[0] < self.end_x and self.start_y < self.point[1] < self.end_y:
+            if self.cal_dist() < self.range:
                 return True
             else:
                 return False
         else:
             return False
-            
-class Matrix:
-    def __init__(self, a, b, c, d):
-        self.a = a
-        self.b = b
-        self.c = c
-        self.d = d
 
-    def twobytwo(self):
-        return np.array([self.a, self.b],[self.c, self.d])
+
+# class staticOB_cal:
+#     def __init__(self, boat_x, boat_y, vector_x, vector_y, start_x, start_y, end_x, end_y, range):
+#         # boat position
+#         self.boat_x = boat_x 
+#         self.boat_y = boat_y
+#         # boat vector
+#         self.vector_x = vector_x
+#         self.vector_y = vector_y
+
+#         # obstacle
+#         self.start_x = start_x
+#         self.start_y = start_y
+#         self.end_x = end_x
+#         self.end_y = end_y
+
+#         # matrix cal
+#         self.sub_x = self.end_x-self.start_x
+#         self.sub_y = self.end_y-self.start_y
+#         self.boat_con = self.vector_x*self.boat_y + self.vector_y*self.boat_x
+#         self.ob_con = self.end_x*self.start_y - self.start_x*self.end_y
+#         self.point = [0, 0]
+
+#         # cross check
+#         self.range = range
+#         self.dist = 0
+
+#     def cal_cross(self):
+#         A = Matrix(self.vector_x, -self.vector_y, self.sub_x, self.sub_y)
+#         if(A.det()==0): # 부정이나 불능인 경우 예외 처리
+#             return False
+#         else:
+#             B = Matrix().twobyone(self.boat_con,self.ob_con,0,0)
+#             X = np.dot(A.twobytwo_reverse(),B)
+#             self.point = [X[0],X[1]]
+#             return self.point
     
-    def twobyone(self):
-        return np.array([self.a],[self.b])
+#     def cal_dist(self):
+#         return sqrt((self.point[0] - self.boat_x)**2+(self.point[1] - self.boat_y)**2)
+        
+#     def cross_check(self):
+#         self.cal_cross()
+#         if(self.start_x < self.point[0] < self.end_x and self.start_y < self.point[1] < self.end_y):
+#             if(self.cal_dist() < self.range):
+#                 return True
+#             else:
+#                 return False
+#         else:
+#             return False
+            
+# class Matrix:
+#     def __init__(self, a, b, c, d):
+#         self.a = a
+#         self.b = b
+#         self.c = c
+#         self.d = d
+
+#     def twobytwo(self):
+#         return np.array([self.a, self.b],[self.c, self.d])
     
-    def det(self):
-        return self.a*self.d-self.b*self.c
+#     def twobyone(self):
+#         return np.array([self.a],[self.b])
     
-    def twobytwo_reverse(self):
-        return (1/self.det())*np.array([self.d,-self.b],[self.c,self.a])
+#     def det(self):
+#         return self.a*self.d-self.b*self.c
+    
+#     def twobytwo_reverse(self):
+#         return (1/self.det())*np.array([self.d,-self.b],[self.c,self.a])
 
 
 '''
