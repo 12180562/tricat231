@@ -186,9 +186,9 @@ class Lidar_Converter:
         self.point_sets_list.append(point_set)  # 마지막 그룹까지 추가
 
         # 중복으로 들어간 첫 번째 점 제거
-        self.point_sets_list[0].begin = self.point_sets_list[0].point_set[1]
-        self.point_sets_list[0].set_size -= 1
-        del self.point_sets_list[0].point_set[0]
+        # self.point_sets_list[0].begin = self.point_sets_list[0].point_set[1]
+        # self.point_sets_list[0].set_size -= 1
+        # del self.point_sets_list[0].point_set[0]
 
     def split_group(self, ps):
         """Split group(point set) into smaller groups
@@ -319,10 +319,10 @@ class Lidar_Converter:
 
         for ob in self.obstacles: # buoy + wall의 장애물 obstacles 들을 전달 msg 타입에 맞춰서 ( ex) Point.begin.x) ob_list에 넣는다
             obstacle = Obstacle()
-            obstacle.begin.x = ob.begin.x
-            obstacle.begin.y = ob.begin.y
-            obstacle.end.x = ob.end.x
-            obstacle.end.y = ob.end.y
+            obstacle.begin.x = -ob.begin.y
+            obstacle.begin.y = ob.begin.x
+            obstacle.end.x = -ob.end.y
+            obstacle.end.y = ob.end.x
             ob_list.obstacle.append(obstacle)
 
         self.obstacle_pub.publish(ob_list)

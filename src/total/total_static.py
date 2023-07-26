@@ -239,8 +239,9 @@ class Total_Static:
             if OS_pos_x <= after_delta_t_x and OS_pos_y <= after_delta_t_y:
                 if (min(x_point)-self.margin) <= cross_x <= (max(x_point)+self.margin) and (min(y_point)-self.margin) <= cross_y <= (max(y_point)+self.margin):
                     if OS_pos_x <= cross_x <= after_delta_t_x and OS_pos_y <= cross_y <= after_delta_t_y:
-                        # print(True)
-                        self.ob_distance = math.hypot(OS_pos_x-cross_x, OS_pos_y-cross_y)
+                        print(1)
+                        ob_distance = math.hypot(OS_pos_x-cross_x, OS_pos_y-cross_y)
+                        print(ob_distance)
                         return True # True가 맞음
                     else:
                         return False # False가 맞음
@@ -250,8 +251,9 @@ class Total_Static:
             elif OS_pos_x >= after_delta_t_x and OS_pos_y <= after_delta_t_y:
                 if (min(x_point)-self.margin) <= cross_x <= (max(x_point)+self.margin) and (min(y_point)-self.margin) <= cross_y <= (max(y_point)+self.margin):
                     if after_delta_t_x <= cross_x <= OS_pos_x and OS_pos_y <= cross_y <= after_delta_t_y:
-                        # print(True)
-                        self.ob_distance = math.hypot(OS_pos_x-cross_x, OS_pos_y-cross_y)
+                        print(1111111111111)
+                        ob_distance = math.hypot(OS_pos_x-cross_x, OS_pos_y-cross_y)
+                        print(ob_distance)
                         return True
                     else:
                         return False
@@ -368,8 +370,7 @@ class Total_Static:
         sunse = 0
         minNum = 9999999
         self.target_angle = math.degrees(math.atan2(self.goal_y - self.boat_y, self.goal_x - self.boat_x)) + 6.5 # 6.5는 자북과 진북의 차이 #enu도 진북 기준임/ 의문은 아직 덜 해소됨
-        print(reachableVel)
-        # print(len(reachableVel_global_all))
+
         for n in range(len(reachableVel)):
             # absNum = abs(reachableVel[n] - self.target_angle)
             absNum = abs(reachableVel[n][2] - self.target_angle)
@@ -384,7 +385,6 @@ class Total_Static:
                 sunse = n
                 # self.vector_desired = reachableVel[n]
                 vector_desired = reachableVel[n][2]
-        print(sunse)
         return vector_desired
     
     # Step5. PID control
