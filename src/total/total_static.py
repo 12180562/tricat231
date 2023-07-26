@@ -339,29 +339,29 @@ class Total_Static:
                 
                 if len(self.non_cross_vector) == 0:
                     self.non_cross_vector.append(reachableVel_global_all[self.angle_number])
-                    self.non_cross_vector.append(reachableVel_global_all[self.angle_number+1])
+                    self.non_cross_vector.append(reachableVel_global_all[self.angle_number-1])
             
-            self.vector_count = len(self.non_cross_vector)
+        self.vector_count = len(self.non_cross_vector)
             # print(len(non_cross_vector))
             # print(non_cross_vector)
         return self.non_cross_vector
         
     # Step3. rerange angle (We think about this more)
-    # def rerange_angle(self):
-    #     output_angle = []
+    def rerange_angle(self):
+        output_angle = []
         
-    #     self.psi_candidate = self.delete_vector_inside_obstacle(self.make_detecting_vector())
-    #     # print(self.psi_candidate)
-    #     for i in range(len(self.psi_candidate)):
-    #         if self.psi_candidate[i][2] >= 180:
-    #             output_angle.append(-180 + abs(self.psi_candidate[i][2]) % 180)
-    #         elif self.psi_candidate[i][2] <= -180:
-    #             output_angle.append(180 - abs(self.psi_candidate[i][2]) % 180)
-    #         else:
-    #             output_angle.append(self.psi_candidate[i][2])
-    #     # print(f"rerange angle: {output_angle}\n")
+        self.psi_candidate = self.delete_vector_inside_obstacle(self.make_detecting_vector())
+        # print(self.psi_candidate)
+        for i in range(len(self.psi_candidate)):
+            if self.psi_candidate[i][2] >= 180:
+                output_angle.append(-180 + abs(self.psi_candidate[i][2]) % 180)
+            elif self.psi_candidate[i][2] <= -180:
+                output_angle.append(180 - abs(self.psi_candidate[i][2]) % 180)
+            else:
+                output_angle.append(self.psi_candidate[i][2])
+        # print(f"rerange angle: {output_angle}\n")
         
-    #     return output_angle
+        return output_angle
 
     # Step4. choose vector
     def choose_velocity_vector(self,reachableVel):
@@ -373,6 +373,12 @@ class Total_Static:
         for n in range(len(reachableVel)):
             # absNum = abs(reachableVel[n] - self.target_angle)
             absNum = abs(reachableVel[n][2] - self.target_angle)
+            if absNum >= 180:
+                absNum = abs(-180 + abs(absNum) % 180)
+            elif absNum <= -180:
+                absNum = abs(180 - abs(absNum) % 180)
+            else:
+                absNum
             if absNum < minNum:
                 minNum = absNum
                 sunse = n
@@ -387,8 +393,8 @@ class Total_Static:
         # generate = self.make_detecting_vector()
         # cross_check = self.delete_vector_inside_obstacle(generate)
         # self.psi_desire = self.choose_velocity_vector(self.rerange_angle()) # rera
-        # self.psi_desire = self.choose_velocity_vector(self.delete_vector_inside_obstacle(self.make_detecting_vector()))
-        self.psi_desire = self.choose_velocity_vector((self.make_detecting_vector()))
+        self.psi_desire = self.choose_velocity_vector(self.delete_vector_inside_obstacle(self.make_detecting_vector()))
+        # self.psi_desire = self.choose_velocity_vector((self.make_detecting_vector()))
 
 
         control_angle = self.psi_desire - self.psi
@@ -423,6 +429,7 @@ class Total_Static:
               psi, desire : {round(self.psi,2)}, {round(self.psi_desire,2)}\n \
               target angle: {round(self.target_angle,4)}\n \
               arriver vector: {self.vector_count}\n \
+              ob_distance: {self.ob_distance}\n \
               servo : {self.u_servo}\n \
               count: {self.count}\n ")
             #   candidate: {self.psi_candidate}\n \

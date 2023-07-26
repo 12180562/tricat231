@@ -40,7 +40,7 @@ detecting_angle: 60 # 해딩기준 한쪽이 N도로 들어감
 
 delta_t: 1
 
-margin: 30
+margin: 10
 
 # fuzzy
 
