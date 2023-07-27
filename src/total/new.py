@@ -95,13 +95,13 @@ class Total_Static:
         self.margin = rospy.get_param("margin")
 
         # self.vector_desired = 0
-        self.ob_distance = 0 # 장애물과 백터 후보가 크로스되는 점과 자선의 거리
+        # self.ob_distance = 0 # 장애물과 백터 후보가 크로스되는 점과 자선의 거리
         # self.psi_candidate = [] # cal_error_angle에서 사용되는 11,1 array 누적에 연관되어있진않음 리레인지엥글에서 사용
-        self.delta_t = rospy.get_param("delta_t")
-        self.range = 1
-        self.non_cross_vector_len = 0
+        # self.delta_t = rospy.get_param("delta_t")
         # self.detecting_points = []
         # self.cross_check = []
+        self.range = rospy.get_param("so_range")
+        self.non_cross_vector_len = 0
 
         # self.controller = rospy.get_param("controller")
         # if self.controller:
@@ -216,7 +216,19 @@ class Total_Static:
             elif angle_list[j] < -180:
                 detecting_points[j][2] = 180 - abs(angle_list[j]) % 180
             else:
-                detecting_points[j][2] = angle_list[j]     
+                detecting_points[j][2] = angle_list[j]
+
+        # for j in range(len(angle_list)):
+        #     if angle_list[j] > 180:
+        #         angle_list[j] = -180 + abs(angle_list[j]) % 180
+        #     elif angle_list[j] < -180:
+        #         angle_list[j] = 180 - abs(angle_list[j]) % 180
+        #     else:
+        #         angle_list[j] = angle_list[j]   
+
+        #     detecting_points[j][0] = cos(radians(angle_list[j]))
+        #     detecting_points[j][1] = sin(radians(angle_list[j]))
+        #     detecting_points[j][2] = angle_list[j]
 
         return detecting_points
                 
@@ -233,51 +245,34 @@ class Total_Static:
         pA = [self.boat_x, self.boat_y] # 자선
         # obstacle_number = 0
         
-        # non_cross_vector =  np.empty((0, 3))
-        # non_cross_vector = []
-        # while (obstacle_number) != len(static_OB_data):     
-        #     obstacle_point_x = [static_OB_data[obstacle_number],static_OB_data[obstacle_number+2]]
-        #     obstacle_point_y = [static_OB_data[obstacle_number+1],static_OB_data[obstacle_number+3]]
-        #     obstacle_number += 4
-            
-        #     for i in range(self.angle_number+1): 
-        #         if  so.staticOB_cal(pA[0], pA[1], detecting_points[i][0], detecting_points[i][1], obstacle_point_x[0], obstacle_point_y[0], obstacle_point_x[1], obstacle_point_y[1], self.range).cross_check() == False:
-        #             # non_cross_vector.append(detecting_points[i][2])
-        #             non_cross_vector = np.append(non_cross_vector, detecting_points[i][2]) # 여기가 크로스 여부 확인하여 어떻게 할지 하는 부분
-        #         else: 
-        #             pass
-                
-        #     if len(non_cross_vector) == 0:
-        #         # non_cross_vector.append(detecting_points[self.angle_number][2])
-        #         # non_cross_vector.append(detecting_points[self.angle_number-1][2])
-        #         non_cross_vector = np.append(non_cross_vector, detecting_points[self.angle_number][2])
-        #         non_cross_vector = np.append(non_cross_vector, detecting_points[self.angle_number-1][2])
-        # # non_cross_vector = list(set(non_cross_vector))
-        # self.non_cross_vector_len = int(len(non_cross_vector))
-        
-        cnt = 0
         non_cross_vector = []
+        tf = []
         for i in range(self.angle_number+1):
-            cnt += 1
             for obstacle_number in range(0, len(static_OB_data), 4):     
                 obstacle_point_x = [static_OB_data[obstacle_number],static_OB_data[obstacle_number+2]]
                 obstacle_point_y = [static_OB_data[obstacle_number+1],static_OB_data[obstacle_number+3]]
-                cnt += 1
-                if so.staticOB_cal(pA[0], pA[1], detecting_points[i][0], detecting_points[i][1], obstacle_point_x[0], obstacle_point_y[0], obstacle_point_x[1], obstacle_point_y[1], self.range).cross_check() == False:
+                # if so.staticOB_cal(pA[0], pA[1], detecting_points[i][0], detecting_points[i][1], obstacle_point_x[0], obstacle_point_y[0], obstacle_point_x[1], obstacle_point_y[1], self.range).cross_check() == False:
+                #     non_cross_vector.append(detecting_points[i][2])
+                #     # non_cross_vector = np.append(non_cross_vector, detecting_points[i][2]) # 여기가 크로스 여부 확인하여 어떻게 할지 하는 부분
+                # else: 
+                #     pass
+                tf.append(so.test(pA[0], pA[1], detecting_points[i][0], detecting_points[i][1], obstacle_point_x[0], obstacle_point_y[0], obstacle_point_x[1], obstacle_point_y[1], self.range).cross_check())
+                # print(pA[0], pA[1], detecting_points[i][0], detecting_points[i][1], obstacle_point_x[0], obstacle_point_y[0], obstacle_point_x[1], obstacle_point_y[1])
+
+            for bool in tf:
+                if not bool:
                     non_cross_vector.append(detecting_points[i][2])
-                    # non_cross_vector = np.append(non_cross_vector, detecting_points[i][2]) # 여기가 크로스 여부 확인하여 어떻게 할지 하는 부분
-                else: 
-                    pass
+                    break
 
         if len(non_cross_vector) == 0:
             non_cross_vector.append(detecting_points[self.angle_number][2])
             non_cross_vector.append(detecting_points[self.angle_number-1][2])
             # non_cross_vector = np.append(non_cross_vector, detecting_points[self.angle_number][2])
             # non_cross_vector = np.append(non_cross_vector, detecting_points[self.angle_number-1][2])
+        # non_cross_vector = list(dict.fromkeys(non_cross_vector))
         # non_cross_vector = list(set(non_cross_vector))
-        print(non_cross_vector)
+        # print(non_cross_vector)
         self.non_cross_vector_len = int(len(non_cross_vector))
-        print(cnt)
         return non_cross_vector
 
     # Step3. choose vector
@@ -290,7 +285,7 @@ class Total_Static:
         self.target_angle = target_angle
 
         for n in range(len(non_cross_vector)):
-            absNum = abs(non_cross_vector[n] - self.target_angle)
+            absNum = abs(non_cross_vector[n] - target_angle)
             # absNum = abs(non_cross_vector[n][2] - target_angle)
             if absNum >= 180:
                 absNum = abs(-180 + abs(absNum) % 180)
