@@ -7,8 +7,7 @@ import numpy as np
 from math import hypot, sqrt
 import queue
 
-
-class test:
+class staticOB_cal:
     def __init__(self, boat_x, boat_y, vector_x, vector_y, start_x, start_y, end_x, end_y, range):
         self.boat_x = boat_x
         self.boat_y = boat_y
@@ -20,19 +19,12 @@ class test:
         self.end_x = end_x
         self.end_y = end_y
 
-        self.sub_x = self.end_x - self.start_x
-        self.sub_y = self.end_y - self.start_y
-
-        self.boat_con = self.vector_y*self.boat_x - self.vector_x*self.boat_y
-        self.ob_con = self.start_y*self.end_x - self.end_y*self.start_x
-
         self.range = range
         self.point = None
 
     def cal_cross(self):
-        A = np.array([[self.vector_y, -self.vector_x], [self.sub_y, self.sub_x]])
-
-        B = np.array([self.boat_con, self.ob_con])
+        A = np.array([[self.vector_y,-self.vector_x],[self.end_y-self.start_y,self.start_x-self.end_x]])
+        B = np.array([self.boat_x*self.vector_y-self.boat_y*self.vector_x, self.start_x*self.end_y-self.start_y*self.end_x])
 
         if np.linalg.det(A) != 0:
             X = np.linalg.solve(A, B)
@@ -45,18 +37,23 @@ class test:
     def cal_dist(self):
         if self.point is None:
             raise ValueError("No cross point. Call cal_cross() first.")
-        
-        return sqrt((self.point[0] - self.boat_x)**2 + (self.point[1] - self.boat_y)**2)
+        # hypot(self.point[0] - self.boat_x, elf.point[1] - self.boat_y)
+        # return sqrt((self.point[0] - self.boat_x)**2 + (self.point[1] - self.boat_y)**2)
+        return hypot(self.boat_x - self.point[0], self.boat_y - self.point[1])
 
     def cross_check(self):
         try:
             self.cal_cross()
         except ValueError:
             return False
+        
+        margin = 3
+        min_x = min(self.start_x, self.end_x)
+        max_x = max(self.start_x, self.end_x)
+        min_y = min(self.start_y, self.end_y)
+        max_y = max(self.start_y, self.end_y)
 
-        if self.start_x <= self.point[0] <= self.end_x and \
-           self.start_y <= self.point[1] <= self.end_y and \
-           self.cal_dist() <= self.range:
+        if min_x-margin <= self.point[0] <= max_x+margin and min_y-margin <= self.point[1] <= max_y+margin and self.cal_dist() <= self.range:
             return True
         else:
             return False

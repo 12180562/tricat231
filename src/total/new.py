@@ -246,23 +246,20 @@ class Total_Static:
         # obstacle_number = 0
         
         non_cross_vector = []
-        tf = []
         for i in range(self.angle_number+1):
+            tf = []
             for obstacle_number in range(0, len(static_OB_data), 4):     
-                obstacle_point_x = [static_OB_data[obstacle_number],static_OB_data[obstacle_number+2]]
-                obstacle_point_y = [static_OB_data[obstacle_number+1],static_OB_data[obstacle_number+3]]
-                # if so.staticOB_cal(pA[0], pA[1], detecting_points[i][0], detecting_points[i][1], obstacle_point_x[0], obstacle_point_y[0], obstacle_point_x[1], obstacle_point_y[1], self.range).cross_check() == False:
-                #     non_cross_vector.append(detecting_points[i][2])
-                #     # non_cross_vector = np.append(non_cross_vector, detecting_points[i][2]) # 여기가 크로스 여부 확인하여 어떻게 할지 하는 부분
-                # else: 
-                #     pass
-                tf.append(so.test(pA[0], pA[1], detecting_points[i][0], detecting_points[i][1], obstacle_point_x[0], obstacle_point_y[0], obstacle_point_x[1], obstacle_point_y[1], self.range).cross_check())
+                # obstacle_point_x = [static_OB_data[obstacle_number],static_OB_data[obstacle_number+2]]
+                # obstacle_point_y = [static_OB_data[obstacle_number+1],static_OB_data[obstacle_number+3]]
+                oblist = [static_OB_data[obstacle_number],static_OB_data[obstacle_number+1],static_OB_data[obstacle_number+2],static_OB_data[obstacle_number+3]]
+                tf.append(so.staticOB_cal(pA[0], pA[1], detecting_points[i][0], detecting_points[i][1], oblist[0], oblist[1], oblist[2], oblist[3], self.range).cross_check())
+                
+                # tf.append(so.staticOB_cal(pA[0], pA[1], detecting_points[i][0], detecting_points[i][1], obstacle_point_x[0], obstacle_point_y[0], obstacle_point_x[1], obstacle_point_y[1], self.range).cross_check())
                 # print(pA[0], pA[1], detecting_points[i][0], detecting_points[i][1], obstacle_point_x[0], obstacle_point_y[0], obstacle_point_x[1], obstacle_point_y[1])
-
-            for bool in tf:
-                if not bool:
-                    non_cross_vector.append(detecting_points[i][2])
-                    break
+            if True in tf: 
+                continue
+            else:
+                non_cross_vector.append(detecting_points[i][2])
 
         if len(non_cross_vector) == 0:
             non_cross_vector.append(detecting_points[self.angle_number][2])
@@ -271,7 +268,7 @@ class Total_Static:
             # non_cross_vector = np.append(non_cross_vector, detecting_points[self.angle_number-1][2])
         # non_cross_vector = list(dict.fromkeys(non_cross_vector))
         # non_cross_vector = list(set(non_cross_vector))
-        # print(non_cross_vector)
+        print(non_cross_vector)
         self.non_cross_vector_len = int(len(non_cross_vector))
         return non_cross_vector
 
@@ -307,7 +304,7 @@ class Total_Static:
         # generate = self.make_detecting_vector()
         # cross_check = self.delete_vector_inside_obstacle(generate)
         psi_desire = self.vector_choose(self.delete_vector_inside_obstacle(self.make_detecting_vector()))
-        # psi_desire = self vector_choose(self.make_detecting_vector())
+        # psi_desire = self.vector_choose(self.make_detecting_vector())
         control_angle = psi_desire - self.psi
         
         # 출력
