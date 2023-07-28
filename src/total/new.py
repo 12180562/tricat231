@@ -8,18 +8,17 @@ import math
 import rospy
 import numpy as np
 import time
-import cv2
+import cv2 as cv
 
 from geometry_msgs.msg import Point
 from std_msgs.msg import Float64, UInt16, Bool
 from sensor_msgs.msg import Imu
-# from sensor_msgs.msg import Imu, LaserScan
 from tricat231_pkg.msg import ObstacleList
 from math import sin, cos, radians
 
 from utils import gnss_converter as gc
 from utils import static_obstacle_cal as so
-# from cam import docking as dk
+from cam import docking2 as dk
 class Total_Static:
     def __init__(self):
         #Goal
@@ -55,6 +54,8 @@ class Total_Static:
         self.servo_middle = int((self.servo_range[0] + self.servo_range[1]) / 2) 
         self.u_servo = self.servo_middle
         self.u_thruster = int(rospy.get_param("thruster")) # 속도에 따른 서보값 변화 줘야할수도?
+        self.u_servo_cam = 0
+        self.u_thruster_cam = 0
 
         #PID Control
         self.errSum = 0
@@ -68,12 +69,23 @@ class Total_Static:
         self.ranges = []
         self.danger_ob = {}
 
+        #Cam
+        """
+        detecting_color : Blue = 1, Green = 2, Red = 3, Orange = 4, Black = 5
+        detecting_shape : Circle = 0, Triangle = 3, Rectangle = 4, cross = 12
+        """
+        self.detecting_color = rospy.get_param("detecting_color")
+        self.detecting_shape = rospy.get_param("detecting_shape")
+
         #ROS
         # sub
         self.yaw_rate_sub = rospy.Subscriber("/imu/data", Imu, self.yaw_rate_callback, queue_size=1)
         self.heading_sub = rospy.Subscriber("/heading", Float64, self.heading_callback, queue_size=1)
         self.enu_position_sub = rospy.Subscriber("/enu_position", Point, self.boat_position_callback, queue_size=1)
         self.obstacle_sub = rospy.Subscriber("/obstacles", ObstacleList, self.obstacle_callback, queue_size=1)
+        self.u_servo_cam = rospy.Subscriber("/u_servo_cam", UInt16, self.u_servo_cam_callback, queue_size=1)
+        self.u_servo_cam = rospy.Subscriber("/u_thruster_cam", UInt16, self.u_thruster_callback, queue_size=1)
+        
         # self.lidar_sub = rospy.Subscriber("/scan", LaserScan, self.lidar_callback, queue_size=1)
 
         # pub
@@ -141,6 +153,13 @@ class Total_Static:
     #     self.angle_min = data.angle_min
     #     self.angle_increment = data.angle_increment
     #     self.ranges = data.ranges
+
+    def u_servo_cam_callback(self, msg):
+        self.u_servo_cam = msg
+
+    def u_servo_cam_callback(self, msg):
+        self.u_thruster_cam = msg
+
     
     # publish function
     def rviz_publish(self):
@@ -246,8 +265,8 @@ class Total_Static:
         # obstacle_number = 0
         
         non_cross_vector = []
-        tf = []
         for i in range(self.angle_number+1):
+            tf = []
             for obstacle_number in range(0, len(static_OB_data), 4):     
                 obstacle_point_x = [static_OB_data[obstacle_number],static_OB_data[obstacle_number+2]]
                 obstacle_point_y = [static_OB_data[obstacle_number+1],static_OB_data[obstacle_number+3]]
@@ -360,14 +379,13 @@ def main():
     rate = rospy.Rate(10) # 10 Hz
     total_static = Total_Static()
 
-    
     while not total_static.is_all_connected():
         rospy.sleep(0.2)
         print("\n{:<>70}".format(" All Connected !"))
 
     while not rospy.is_shutdown():
-        if cv2.waitKey(1) == 27:
-            cv2.destroyAllWindows()
+        if cv.waitKey(1) == 27:
+            cv.destroyAllWindows()
             break
 
         total_static.cal_distance_goal()
@@ -376,6 +394,10 @@ def main():
         total_static.end = total_static.end_check()
 
         if total_static.end:
+            if total_static.count == 1:
+                webcam = cv.VideoCapture(0)
+                doking = dk.Docking(webcam, total_static.detecting_color, total_static.detecting_shape)
+                control_angle, thruster_value, size = doking.run()
             total_static.next()
             print(f"{total_static.count} arrive")
             if total_static.count == len(total_static.remained_waypoint):

@@ -4,11 +4,6 @@
 import cv2 as cv
 import numpy as np
 
-###################################
-# JJU_0721수정_1 : red 범위수정 , orange & black 추가
-# JJU_ : docking에서 detecting color 주석 추가해주세요 ~ detecing_color // 4 : orange, 5 : black
-###################################
-
 def color_filtering(detecting_color, hsv_image): # 이미지 내 특정 색상 검출 함수
     if detecting_color == 1: # Blue
         lower_color = np.array([110, 50, 50]) # np.array([100, 100, 100])
@@ -146,6 +141,7 @@ def move_with_largest(contour_info, raw_image_width):
         # and largest_width < raw_image_width / a: # center의 x좌표가 화면 절반보다 왼쪽에 있을 때 : 왼쪽으로 회전
         #    print(centroid_x, Limage_limit, largest_width, raw_image_width, "Move Left")
         #    print(contour_info)
+            # control_angle
             print("Left")
             servo = 81
 
@@ -195,3 +191,4 @@ def setLabel(img, pts, label):
     pt2 = (x+w, y+h)
     cv.rectangle(img, pt1, pt2, (0,255,0), 2)
     cv.putText(img, label, (pt1[0], pt1[1]-3), cv.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255))
+
