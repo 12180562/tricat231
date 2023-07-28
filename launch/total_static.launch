@@ -2,7 +2,6 @@
 
 <launch>
 	<!--LiDAR-->
-	<!-- <include file="$(find rplidar_ros)/launch/rplidar.launch" />  -->
 	<node name="rplidarNode"          pkg="rplidar_ros"  type="rplidarNode">
 		<param name="serial_port"         type="string" value="/dev/ttyLiDAR"/>  
 		<param name="serial_baudrate"     type="int"    value="256000"/>
@@ -26,16 +25,11 @@
 	<node pkg="tricat231_pkg"  type="heading_converter.py" name="headingConverter" respawn="true"/>
     <node pkg="tricat231_pkg" type="gnss_converter.py" name="GnssConverter" respawn="true" output="screen"/>
 	<node pkg="tricat231_pkg" type="lidar_clustering.py" name="LidarCluster" args="/dev/rplidar" respawn="true"/>
-	<!-- <node pkg="tricat231_pkg" type="total_static.py" name="TotalStatic" output="screen"/> -->
-	<node pkg="tricat231_pkg" type="new.py" name="TotalStatic" output="screen"/>
-	<node pkg="tricat231_pkg" type="visual.py" name="Visual" respawn="true"/>
+	<node pkg="tricat231_pkg" type="total_static.py" name="TotalStatic" output="screen"/>
 	<!-- <node pkg="tricat231_pkg" type="docking.py" name="Docking" respawn="true"/> -->
+	<node pkg="tricat231_pkg" type="visual.py" name="Visual" respawn="true"/>
 	<node pkg="rviz" type="rviz" name="visual_rviz" args="-d $(find tricat231_pkg)/rviz/tricat231.rviz"/>
-	<node pkg="tricat231_pkg" type="serial_node.py" name="ARDUINO" args="/dev/ttyARDUINO" respawn="true"/>
-
-	<!-- Record -->
-	<arg name="do_record" default="false" />
-	<node pkg="rosbag" type="record" name="rosbag_record" required="true" if="$(arg do_record)" args="record -a -O $(find tricat231_pkg)/data/rosbag/$(arg filename)"  />
+	<!-- <node pkg="tricat231_pkg" type="serial_node.py" name="ARDUINO" args="/dev/ttyARDUINO" respawn="true"/> -->
 
     <!-- Parameters -->
 	<rosparam command="load" file="$(find tricat231_pkg)/params/231_params.yaml"/>
