@@ -243,7 +243,8 @@ class Lidar_Converter:
                 self.split_wall(ps)
                 # self.obstacles.append(ps)
             else:
-                self.clusturing_buoy(ps)
+                # self.rearrange_buoy(ps)
+                self.second_rearrange_buoy(ps)
                 # self.obstacles.append(ps)
 
     def split_wall(self, ps):
@@ -263,7 +264,7 @@ class Lidar_Converter:
 
         self.obstacles.append(wall_particle)  # last group
 
-    def clusturing_buoy(self, ps):
+    def rearrange_buoy(self, ps):
         buoy_particle = PointSet()
 
         min = 999
@@ -311,6 +312,53 @@ class Lidar_Converter:
         buoy_particle.end.y = new_end_point_y
 
         # print(buoy_particle.begin.x)
+        self.obstacles.append(buoy_particle)
+        
+        
+    def second_rearrange_buoy(self, ps):
+        
+        buoy_particle = PointSet()
+
+        min = 999
+
+        for p in ps.point_set: # 가장 가까운 점을 찾는 구문
+            # print("구 시작점",p.x)
+            # print("구 끝점",p.y)
+
+            buoy_particle.append_point(p)
+            
+            res = sqrt(pow(p.y - self.boat_y, 2.0) + pow(p.x - self.boat_x, 2.0))
+
+            if res  < min:
+                min = res
+                closed_point = [p.x,p.y] # 가장 가까운 점
+
+
+        line_inclination = (ps.point_set[-1].y - ps.point_set[0].y) / (ps.point_set[-1].x - ps.point_set[0].x+0.00000000000000001) # 장애물의 시작점과 끝점의 기울기를 구한다.
+        
+        
+
+        new_line_y = -1*line_inclination*closed_point[0] + closed_point[1]  # ex y=-x+2 면 2
+        # print("새로운 선의 y값line_y",new_line_y)
+
+        convert_line_inclinaion = 1 / -line_inclination
+
+
+        new_begin_point_x = ((-new_line_y)/(line_inclination-convert_line_inclinaion)) #교차 시작점의 x
+        new_begin_point_y = ((line_inclination)*(-new_line_y)/(line_inclination-convert_line_inclinaion) + new_line_y) #교차 시작점의 y
+
+        new_end_point_x = ((-new_line_y)/(line_inclination-convert_line_inclinaion)) # 교차 끝점의 x
+        new_end_point_y = ((line_inclination)*(-new_line_y)/(line_inclination-convert_line_inclinaion) + new_line_y) #교차 끝점의 y
+
+        print(buoy_particle.begin.x)
+        
+        buoy_particle.begin.x = new_begin_point_x
+        buoy_particle.begin.y = new_begin_point_y
+        buoy_particle.end.x = new_end_point_x
+        buoy_particle.end.y = new_end_point_y
+
+        print(buoy_particle.begin.x)
+        
         self.obstacles.append(buoy_particle)
 
     def publish_obstacles(self):
