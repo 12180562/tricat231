@@ -3,7 +3,7 @@
 origin: [37.4480149, 126.6534485999, 49.451] #분수대 중간 앞쪽
 
 #토너먼트
-autonomous_goal: [37.4481304, 128.653529, 49.0] #중간 뽈대 조금 앞에
+autonomous_goal: [37.4481237, 126.6535206, 49.0] #중간 뽈대 조금 앞에
 
 # Totla  Use it together
 waypoints: [ 
@@ -13,7 +13,7 @@ waypoints: [
   [37.448035, 126.6534732, 49.451], # 본부 바로 앞쪽
   [37.4481237, 126.6535206, 49.0], # 중간
   # [37.448035, 126.6534732, 49.451],
-    [37.448035, 126.6534732, 49.451], # 본부 바로 앞쪽
+  [37.448035, 126.6534732, 49.451], # 본부 바로 앞쪽
   # [37.4480291, 126.6534552, 49.0],
   # [37.4481464, 126.6535462, 49.0], #뽈대 중간 rawdata 진북 기울기 35.94 enu변화 좌표계 29.28 target 35.2673
   # [37.4481228, 126.6535601, 49.0], #뽈대의 오른쪽 앞 rawdata 진북 기울기 45.92 enu변화 좌표계 39.92  target 45.9843
@@ -23,34 +23,28 @@ waypoints: [
   # [37.4480397, 126.6534791, 49.0], #분수대 중간 앞쪽
 ]
 
-
-goal_range: 1
+goal_range: 1.5 #[m]
 
 servo_range: [74, 114] # middle: 94
 
 thruster: 1650
 
-# 1650일때 kp: 2,  kd: 0.7
-# 1700일때 kp: 2.1 kd: 0.9
-kp_servo : 2
-kd_servo : 0.7
+# 1650일때 kp: 0.2,  kd: 0.07
+# 1700일때 kp: 0.21 kd: 0.09
+kp_servo : 0.2
+kd_servo : 0.07
 
 filter_queue_size: 10
 
-#controler
-controller: 0
-
 # static
-angle_number: 24  # even 계산시 전체 앵글에 N개 
+angle_number: 24  # 짝수, 계산시 전체 앵글에 N개 
 
 detecting_angle: 60 # 해딩기준 한쪽이 N도로 들어감
 
 # delta_t: 1
 so_range: 2.5
 
-margin: 10
-
-# fuzzy
+margin: 3
 
 # docking
 detecting_color: 3
