@@ -12,7 +12,7 @@ from math import sin, cos, radians, degrees, hypot, atan2
 from geometry_msgs.msg import Point
 from std_msgs.msg import Float64, UInt16, Bool
 from sensor_msgs.msg import Imu
-from tricat231_pkg.msg import ObstacleList
+from tricat231_pkg.msg import ObstacleList, Cam
 
 from utils import gnss_converter as gc
 from utils import static_obstacle_cal as so
@@ -35,6 +35,7 @@ class Total_Static:
         self.psi_desire = 0
         self.target_angle = 0
         self.count = 0
+        self.end = False
         
         #My Boat
         self.psi = 0
@@ -59,6 +60,12 @@ class Total_Static:
         
         #Lidar
         self.obstacles = [] 
+        
+        #Cam
+        self.docking_count = rospy.get_param("docking_count")
+        self.cam_control_angle = 0
+        self.cam_u_thruster = 0
+        self.cam_end = False
 
         #ROS
         # sub
@@ -66,18 +73,17 @@ class Total_Static:
         self.heading_sub = rospy.Subscriber("/heading", Float64, self.heading_callback, queue_size=1)
         self.enu_position_sub = rospy.Subscriber("/enu_position", Point, self.boat_position_callback, queue_size=1)
         self.obstacle_sub = rospy.Subscriber("/obstacles", ObstacleList, self.obstacle_callback, queue_size=1)
+        self.cam_data_sub = rospy.Subscriber("/cam_data", Cam, self.cam_data_callback, queue_size= 10)
 
         # pub
         self.servo_pub = rospy.Publisher("/servo", UInt16, queue_size=1)
         self.thruster_pub = rospy.Publisher("/thruster", UInt16, queue_size=1)
-        self.finish_pub = rospy.Publisher("/finish_check", Bool, queue_size=1) # YOO 카메라 관련된 네이밍 필요 
-        self.finish = False
+        self.cam_pub = rospy.Publisher("/cam_check", Bool, queue_size=1)
         
         # rviz pub
         self.psi_pub  = rospy.Publisher("/psi",Float64, queue_size=1)
         self.desire_pub = rospy.Publisher("/psi_desire", Float64, queue_size=1)
-        self.end_pub = rospy.Publisher("/end_check", Bool, queue_size=1) # Yoo 도착인지 뭔지 명확한 네이밍 필요
-        self.end = False
+        self.count_pub = rospy.Publisher("/count", UInt16, queue_size=1)
         
         #Static Obstacle
         self.angle_number = rospy.get_param("angle_number")
@@ -86,6 +92,7 @@ class Total_Static:
 
         self.range = rospy.get_param("so_range")
         self.non_cross_vector_len = 0
+        self.servo_pid_controller()
 
     def yaw_rate_callback(self, msg):
         self.yaw_rate = msg.angular_velocity.z 
@@ -103,11 +110,19 @@ class Total_Static:
     def obstacle_callback(self, msg):
         self.obstacles = msg.obstacle
 
+    def cam_data_callback(self, msg):
+        self.cam_control_angle = msg.cam_control_angle
+        self.cam_u_thruster = msg.cam_u_thruster
+        self.cam_end = msg.cam_end
+
     # publish function
     def rviz_publish(self):
         self.psi_pub.publish(self.psi)
         self.desire_pub.publish(self.psi_desire)
-        self.end_pub.publish(self.end)
+        self.count_pub.publish(self.count)
+    
+    def cam_publish(self):
+        self.cam_pub.publish(self.cam_end)
 
     # senser conection check
     def is_all_connected(self):
@@ -221,12 +236,15 @@ class Total_Static:
     
     # Step4. PID control
     def servo_pid_controller(self):
-        psi_desire = self.vector_choose(self.delete_vector_inside_obstacle(self.make_detecting_vector()))
-
-        control_angle = psi_desire - self.psi
-        
-        # 출력
-        self.psi_desire = psi_desire
+        if self.count != self.docking_count or self.cam_end:
+            psi_desire = self.vector_choose(self.delete_vector_inside_obstacle(self.make_detecting_vector()))
+            control_angle = psi_desire - self.psi
+            # 출력
+            self.psi_desire = psi_desire
+        else:
+            control_angle = self.cam_control_angle
+            # 출력
+            self.psi_desire = control_angle + self.psi
         
         if control_angle >= 180:
             control_angle = -180 + abs(control_angle) % 180
@@ -252,7 +270,10 @@ class Total_Static:
     def control_publish(self):
         self.servo_pid_controller()
         self.servo_pub.publish(self.u_servo)
-        self.thruster_pub.publish(self.u_thruster)
+        if self.count != self.docking_count or self.cam_end:
+            self.thruster_pub.publish(self.u_thruster)
+        else:
+            self.thruster_pub.publish(self.cam_u_thruster)
     
     def print_state(self):
         print(f"------------------------------------\n \
@@ -269,7 +290,6 @@ def main():
     rospy.init_node("Total_Static", anonymous=False)
     rate = rospy.Rate(10) # 10 Hz
     total_static = Total_Static()
-
     
     while not total_static.is_all_connected():
         rospy.sleep(0.2)
@@ -281,6 +301,7 @@ def main():
         
         total_static.print_state()
 
+        # 종료 처리 부분
         if total_static.end:
             total_static.next()
             print(f"{total_static.count} arrive")
@@ -291,10 +312,11 @@ def main():
                 print("-------------Finished---------------")
                 break
             else:
-                # total_static.servo_pub.publish(total_static.u_servo)
-                # total_static.thruster_pub.publish(1500)
+                total_static.servo_pub.publish(total_static.u_servo)
+                total_static.thruster_pub.publish(1500)
                 rospy.sleep(3)
-
+                # pass
+        
         else:
             pass
 

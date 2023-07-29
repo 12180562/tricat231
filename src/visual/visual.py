@@ -12,7 +12,7 @@ import math
 from collections import deque # obstacle 부분에서 deque 자료구조 쓸 때 사용하는 거
 import utils.show as sh 
 from nav_msgs.msg import Path
-from std_msgs.msg import Float64, Bool
+from std_msgs.msg import Float64, UInt16
 from geometry_msgs.msg import PointStamped, Point, Vector3, PoseStamped, PolygonStamped, Point32, Polygon
 from visualization_msgs.msg import MarkerArray
 from tricat231_pkg.msg import ObstacleList
@@ -44,29 +44,27 @@ class map_rviz:
             n,e,_ = gc.enu_convert(waypoint)
             self.remained_polygon.append(sh.Circle_polygon([n, e], goal_range))
         
-        self.end_sub = rospy.Subscriber("/end_check", Bool, self.end_callback, queue_size=10)
-        self.end = False
+        self.count = rospy.Subscriber("/count", UInt16, self.end_callback, queue_size=10)
         self.pub_waypoint1 = rospy.Publisher("/waypoint1", PolygonStamped, queue_size=10)
         # self.pub_waypoint2 = rospy.Publisher("/waypoint2", PolygonStamped, queue_size=10)
         # self.pub_waypoint3 = rospy.Publisher("/waypoint3", PolygonStamped, queue_size=10)
     
     def publish_map(self):
         # self.pub_bsd.publish(self.bsd)
-        cnt = 0
-        if self.end:
-            cnt += 1
-        if cnt < 1:
+        if self.count == 1:
             self.pub_waypoint1.publish(self.remained_polygon[0])
             # self.pub_waypoint2.publish(self.remained_polygon[1])
             # self.pub_waypoint3.publish(self.remained_polygon[2])
-        elif cnt == 1:
-            print("Finish")
+        elif self.count == 2:
+            # print("Finish")
+            self.pub_waypoint1.publish(self.remained_polygon[0])
             # self.pub_waypoint2.publish(self.remained_polygon[1])
             # self.pub_waypoint3.publish(self.remained_polygon[2])
         # elif cnt == 2:
             # self.pub_waypoint3.publish(self.remained_polygon[2])
         else:
-            print("Finish")
+            self.pub_waypoint1.publish(self.remained_polygon[0])
+            # print("Finish")
 
     def end_callback(self, msg):
         self.end = msg.data

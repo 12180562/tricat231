@@ -115,8 +115,8 @@ def show_the_shape_contour(hsv_image,detecting_color):
 def show_the_shape_info(raw_image, detecting_shape,contours) :
     contour_info, raw_image = shape_and_label(detecting_shape, raw_image, contours)
 #    cv.imshow("CONTROLLER", raw_image)
-    servo_angle, thruster_value = move_with_largest(contour_info, raw_image.shape[1]) # return : servo, thruster
-    return raw_image, servo_angle, thruster_value
+    control_angle_angle, thruster_value = move_with_largest(contour_info, raw_image.shape[1]) # return : control_angle, thruster
+    return raw_image, control_angle_angle, thruster_value
 
 def move_with_largest(contour_info, raw_image_width):
     # 제일 큰 도형 선택
@@ -125,7 +125,7 @@ def move_with_largest(contour_info, raw_image_width):
 #    print("Contour Info After Filtering:", contour_info)  # Print contour_info after filtering
     Limage_limit = raw_image_width / 2 - 10
     Rimage_limit = raw_image_width / 2 + 10
-    servo = 93
+    control_angle = 93
     thruster = 1550 # thruster_mid
     size = 0
     if len(contour_info) > 0: # contour에 area, center가 입력되었을 때 ( 도형이 1개 이상 인식되었을 때 )
@@ -143,14 +143,14 @@ def move_with_largest(contour_info, raw_image_width):
         #    print(contour_info)
             # control_angle
             print("Left")
-            servo = 81
+            control_angle = 81
 
         elif centroid_x > Rimage_limit :
         # and largest_width < raw_image_width / a: # center의 x좌표가 화면 절반보다 오른쪽에 있을 때 : 오른쪽으로 회전
         #    print(centroid_x, Limage_limit, largest_width, raw_image_width, "Move Right")
         #    print(contour_info)
             print("Right")
-            servo = 105
+            control_angle = 105
 
 ###################################
 # JJU_0721수정_4 : 요기 함수 if 겹치게 소폭 수정했어요.. 그냥 참고만 하셔유
@@ -160,12 +160,12 @@ def move_with_largest(contour_info, raw_image_width):
             if largest_width < raw_image_width / a :
                 print("Move Front")
                 size = 10
-                servo = 93
+                control_angle = 93
                 thruster = 1550 # thruster_max
             elif largest_width > raw_image_width / a :
                 print("STOP")
                 size = 100
-                servo = 93
+                control_angle = 93
                 thruster = 1500 # thruster_min
         ## 예외case
         # elif centroid_x < Limage_limit and largest_width > raw_image_width / a : 
@@ -174,8 +174,8 @@ def move_with_largest(contour_info, raw_image_width):
         #     print("case2") 
     else:
         print("No contour found")
-    print("servo : ", servo, "thruster : ", thruster)
-    return servo, thruster, size
+    print("control_angle : ", control_angle, "thruster : ", thruster)
+    return control_angle, thruster, size
 #    print(contour_info)  # Print contour_info for debugging
 
 def mean_brightness(img):
