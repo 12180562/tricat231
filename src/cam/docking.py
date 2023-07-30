@@ -58,12 +58,13 @@ class Docking :
         # 3. 형성된 마스크에서 외곽선 검출 ( datatype 변경 )
         contours, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE) # 컨투어 검출
         contours = np.array(contours)
-        min_area = 5000
+        min_area = 100
         #    contours = contours.astype(np.float)
             
         # contour_info, raw_image = markDetection.shape_and_label(self.detecting_shape, raw_image, contours)
         contour_info, raw_image = markDetection.shape_and_label(self.detecting_shape, cam, contours, min_area)
         cv.imshow("CONTROLLER", raw_image)
+        cv.imshow("Mask", mask)
         # h,w,c = raw_image.shape # 원본 이미지에서 가로 길이 받아오기
         # move_with_largest(contour_info, w)
         control_angle, thruster_value, size = markDetection.move_with_largest(contour_info, raw_image.shape[1])

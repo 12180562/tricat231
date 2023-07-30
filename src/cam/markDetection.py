@@ -28,26 +28,50 @@ def show_the_shape_contour(hsv_image,detecting_color):
     return contours
 
 # 이미지 내 특정 색상 검출
+# def color_filtering(detecting_color, hsv_image):
+#     if detecting_color == 1: # Blue
+#         lower_color = np.array([110, 50, 50]) # np.array([100, 100, 100])
+#         upper_color = np.array([130, 255, 255]) # np.array([130, 255, 255])
+#         mask = cv.inRange(hsv_image, lower_color, upper_color) # 색상 범위에 해당하는 마스크 생성
+#     elif detecting_color == 2: # Green
+#         lower_color = np.array([50, 50, 50]) # np.array([40, 100, 100])
+#         upper_color = np.array([70, 255, 255]) # np.array([80, 255, 255])
+#         mask = cv.inRange(hsv_image, lower_color, upper_color)
+#     elif detecting_color == 3: # Red
+#         lower_color = np.array([0, 100, 100]) 
+#         upper_color = np.array([10, 255, 255]) 
+#         mask = cv.inRange(hsv_image, lower_color, upper_color)
+#     elif detecting_color == 4: # Orange
+#         lower_color = np.array([10, 100, 100]) #오렌지 알지비 값이 좀 이상할수 있음 알지비기준 255 69 0
+#         upper_color = np.array([25, 255, 255])
+#         mask = cv.inRange(hsv_image, lower_color, upper_color)
+#     elif detecting_color == 5: # Black
+#         lower_color = np.array([0, 0, 0])
+#         upper_color = np.array([255, 255, 30]) 
+#         mask = cv.inRange(hsv_image, lower_color, upper_color)
+#     else:
+#         pass
+#     return mask
 def color_filtering(detecting_color, hsv_image):
     if detecting_color == 1: # Blue
-        lower_color = np.array([110, 50, 50]) # np.array([100, 100, 100])
-        upper_color = np.array([130, 255, 255]) # np.array([130, 255, 255])
+        lower_color = np.array([180, 0, 0]) # np.array([100, 100, 100])
+        upper_color = np.array([260, 100, 100]) # np.array([130, 255, 255])
         mask = cv.inRange(hsv_image, lower_color, upper_color) # 색상 범위에 해당하는 마스크 생성
     elif detecting_color == 2: # Green
-        lower_color = np.array([50, 50, 50]) # np.array([40, 100, 100])
-        upper_color = np.array([70, 255, 255]) # np.array([80, 255, 255])
+        lower_color = np.array([0, 180, 0]) # np.array([40, 100, 100])
+        upper_color = np.array([100, 260, 100]) # np.array([80, 255, 255])
         mask = cv.inRange(hsv_image, lower_color, upper_color)
     elif detecting_color == 3: # Red
-        lower_color = np.array([0, 100, 100]) 
-        upper_color = np.array([10, 255, 255]) 
+        lower_color = np.array([0, 0, 255]) 
+        upper_color = np.array([90, 80, 255]) 
         mask = cv.inRange(hsv_image, lower_color, upper_color)
     elif detecting_color == 4: # Orange
-        lower_color = np.array([10, 100, 100])
-        upper_color = np.array([25, 255, 255])
+        lower_color = np.array([0, 100, 240]) #오렌지 알지비 값이 좀 이상할수 있음 알지비기준 255 69 0
+        upper_color = np.array([100, 170, 260])
         mask = cv.inRange(hsv_image, lower_color, upper_color)
     elif detecting_color == 5: # Black
         lower_color = np.array([0, 0, 0])
-        upper_color = np.array([255, 255, 30]) 
+        upper_color = np.array([60, 70, 100]) 
         mask = cv.inRange(hsv_image, lower_color, upper_color)
     else:
         pass
@@ -75,7 +99,7 @@ def find_centroid(contour):
         return center
     else:
         return None
- 
+
 ###################################
 # JJU_0721수정_2 : 원 인식 부분 수정함 & area 변수 계산 추가함 & shape_and_label 함수 매개변수 min_area 추가함
 # JJU_ : 지난번에 수정 안된걸 드렸나봐요 (?). 원 인식을 위해서 원래 뒤에 find_area_centroid 함수에서 계산했던 'area' 연산을 이 함수로 뺐어용
@@ -88,7 +112,7 @@ def shape_and_label(detecting_shape, raw_image, contours, min_area):    # 원하
         area = cv.contourArea(contour)
         if area < min_area: # 인식 면적 제한 두기
             continue
-        approx = cv.approxPolyDP(contour, cv.arcLength(contour, True) * 0.01, True)
+        approx = cv.approxPolyDP(contour, cv.arcLength(contour, True) * 0.5, True)
 
         # cv2.approxPolyDP(curve, epsilon, closed, approxCurve=None) -> approxCurve : 외곽선을 근사화(단순화)
         #   • curve: 입력 곡선 좌표. numpy.ndarray. shape=(K, 1, 2)
@@ -111,7 +135,7 @@ def shape_and_label(detecting_shape, raw_image, contours, min_area):    # 원하
         elif detecting_shape == 12 and line_num == 12:  # 십자가
             center = find_centroid(contour)
             setLabel(raw_image, contour, 'CROSS')
-        else:
+        elif detecting_shape == 0 and line_num == 0: # 원
             _, radius = cv.minEnclosingCircle(approx)  # 원으로 근사
             ratio = radius * radius * 3.14 / (area + 0.000001)  # 해당 넓이와 정원 간의 넓이 비
             if 0.5 < ratio < 2:  # 원에 가까울 때만 필터링
@@ -119,7 +143,9 @@ def shape_and_label(detecting_shape, raw_image, contours, min_area):    # 원하
                 setLabel(raw_image, contour, 'CIRCLE')
             else:
                 center = None
-
+        else:
+            center = None
+            
         if area is not None and center is not None:
             contour_info.append((area, center))
             cv.circle(raw_image, center, 5, (255, 0, 0), -1)
