@@ -243,8 +243,8 @@ class Lidar_Converter:
                 self.split_wall(ps)
                 # self.obstacles.append(ps)
             else:
-                # self.rearrange_buoy(ps)
-                self.second_rearrange_buoy(ps)
+                self.rearrange_buoy(ps)
+                # self.second_rearrange_buoy(ps)
                 # self.obstacles.append(ps)
 
     def split_wall(self, ps):
@@ -336,37 +336,46 @@ class Lidar_Converter:
 
         line_inclination = (ps.point_set[-1].y - ps.point_set[0].y) / (ps.point_set[-1].x - ps.point_set[0].x+0.00000000000000001) # 장애물의 시작점과 끝점의 기울기를 구한다.
         
-        
+
 
         new_line_y = -1*line_inclination*closed_point[0] + closed_point[1]  # ex y=-x+2 면 2
         
-        conversion_line_inclination = 1 / -line_inclination
+        if line_inclination == 0:
+            
+            pass
+            
         
-        begin_conversion_line_inclination_y = -1*conversion_line_inclination*ps.point_set[0].x + ps.point_set[0].y
-        end_conversion_line_inclination_y = -1*conversion_line_inclination*ps.point_set[-1].x + ps.point_set[-1].y
+        else:
+                    
         
         
-        # print("새로운 선의 y값line_y",new_line_y)
+            conversion_line_inclination = 1 / -line_inclination
+            
+            begin_conversion_line_inclination_y = -1*conversion_line_inclination*ps.point_set[0].x + ps.point_set[0].y
+            end_conversion_line_inclination_y = -1*conversion_line_inclination*ps.point_set[-1].x + ps.point_set[-1].y
+            
+            
+            # print("새로운 선의 y값line_y",new_line_y)
 
-        conversion_line_inclinaion = 1 / -line_inclination
+            conversion_line_inclinaion = 1 / -line_inclination
 
 
-        new_begin_point_x = ((begin_conversion_line_inclination_y-new_line_y)/(line_inclination-conversion_line_inclinaion)) #교차 시작점의 x
-        new_begin_point_y = ((line_inclination)*(begin_conversion_line_inclination_y-new_line_y)/(line_inclination-conversion_line_inclinaion) + new_line_y) #교차 시작점의 y
+            new_begin_point_x = ((begin_conversion_line_inclination_y-new_line_y)/(line_inclination-conversion_line_inclinaion)) #교차 시작점의 x
+            new_begin_point_y = ((line_inclination)*(begin_conversion_line_inclination_y-new_line_y)/(line_inclination-conversion_line_inclinaion) + new_line_y) #교차 시작점의 y
 
-        new_end_point_x = ((end_conversion_line_inclination_y-new_line_y)/(line_inclination-conversion_line_inclinaion)) # 교차 끝점의 x
-        new_end_point_y = ((line_inclination)*(end_conversion_line_inclination_y-new_line_y)/(line_inclination-conversion_line_inclinaion) + new_line_y) #교차 끝점의 y
+            new_end_point_x = ((end_conversion_line_inclination_y-new_line_y)/(line_inclination-conversion_line_inclinaion)) # 교차 끝점의 x
+            new_end_point_y = ((line_inclination)*(end_conversion_line_inclination_y-new_line_y)/(line_inclination-conversion_line_inclinaion) + new_line_y) #교차 끝점의 y
 
-        # print(buoy_particle.begin.x)
-        
-        buoy_particle.begin.x = new_begin_point_x
-        buoy_particle.begin.y = new_begin_point_y
-        buoy_particle.end.x = new_end_point_x
-        buoy_particle.end.y = new_end_point_y
+            # print(buoy_particle.begin.x)
+            
+            buoy_particle.begin.x = new_begin_point_x
+            buoy_particle.begin.y = new_begin_point_y
+            buoy_particle.end.x = new_end_point_x
+            buoy_particle.end.y = new_end_point_y
 
-        # print(buoy_particle.begin.x)
-        
-        self.obstacles.append(buoy_particle)
+            # print(buoy_particle.begin.x)
+            
+            self.obstacles.append(buoy_particle)
 
     def publish_obstacles(self):
         """Publish clustering results in (x, y) coordinate format"""

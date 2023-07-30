@@ -159,6 +159,8 @@ def setLabel(img, pts, label):
     cv.rectangle(img, pt1, pt2, (0,255,0), 2)
     cv.putText(img, label, (pt1[0], pt1[1]-3), cv.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255))
 
+# 수정 필요
+
 def move_with_largest(contour_info, raw_image_width):
     # 제일 큰 도형 선택
 #    print("Contour Info Before Filtering:", contour_info)  # Print contour_info before filtering

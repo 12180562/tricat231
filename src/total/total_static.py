@@ -92,7 +92,11 @@ class Total_Static:
 
         self.range = rospy.get_param("so_range")
         self.non_cross_vector_len = 0
-        self.servo_pid_controller()
+        self.servo_pid_controller(self.psi, self.boat_x, self.boat_y)
+        
+        # self.delete_vector_inside_obstacle(self.make_detecting_vector())
+        
+        
 
     def yaw_rate_callback(self, msg):
         self.yaw_rate = msg.angular_velocity.z 
@@ -155,13 +159,13 @@ class Total_Static:
             self.goal_y = self.remained_waypoint[self.count][1] # y = 1
             
     # Step 1. make detecting vector
-    def make_detecting_vector(self):
+    def make_detecting_vector(self, psi):
         detecting_points = np.zeros([self.angle_number+1,3])
-        angle_list = [self.psi]
+        angle_list = [psi]
 
         for i in range(int(self.angle_number/2)):
-            angle_list.append(self.psi + (i+1)*self.detecting_angle/(self.angle_number/2))
-            angle_list.append(self.psi - (i+1)*self.detecting_angle/(self.angle_number/2))
+            angle_list.append(psi + (i+1)*self.detecting_angle/(self.angle_number/2))
+            angle_list.append(psi - (i+1)*self.detecting_angle/(self.angle_number/2))
         
         for j in range(len(angle_list)):
             detecting_points[j][0] = cos(radians(angle_list[j]))
@@ -177,16 +181,16 @@ class Total_Static:
         return detecting_points
                 
     # Step 2. delete vector inside obstacle
-    def delete_vector_inside_obstacle(self, detecting_points):
+    def delete_vector_inside_obstacle(self, detecting_points, psi, boat_x, boat_y):
         static_OB_data = []
         for i in self.obstacles:
-            begin_x = self.boat_x + (-i.begin.x) * cos(radians(self.psi)) - i.begin.y * sin(radians(self.psi))
-            begin_y = self.boat_y + (-i.begin.x) * sin(radians(self.psi)) + i.begin.y * cos(radians(self.psi))
-            end_x = self.boat_x + (-i.end.x) * cos(radians(self.psi)) - i.end.y * sin(radians(self.psi))
-            end_y = self.boat_y + (-i.end.x) * sin(radians(self.psi)) + i.end.y * cos(radians(self.psi))
+            begin_x = boat_x + (-i.begin.x) * cos(radians(psi)) - i.begin.y * sin(radians(psi))
+            begin_y = boat_y + (-i.begin.x) * sin(radians(psi)) + i.begin.y * cos(radians(psi))
+            end_x = boat_x + (-i.end.x) * cos(radians(psi)) - i.end.y * sin(radians(psi))
+            end_y = boat_y + (-i.end.x) * sin(radians(psi)) + i.end.y * cos(radians(psi))
             static_OB_data.extend([begin_x, begin_y, end_x, end_y])
 
-        pA = [self.boat_x, self.boat_y]
+        pA = [boat_x, boat_y]
         
         non_cross_vector = []
         for i in range(self.angle_number+1):
@@ -208,10 +212,10 @@ class Total_Static:
         return non_cross_vector
 
     # Step3. choose vector
-    def vector_choose(self,non_cross_vector):
+    def vector_choose(self, non_cross_vector, boat_x, boat_y):
         minNum = 1000
         vector_desired = 0 
-        target_angle = degrees(atan2(self.goal_y - self.boat_y, self.goal_x - self.boat_x)) + 6.5
+        target_angle = degrees(atan2(self.goal_y - boat_y, self.goal_x - boat_x)) + 6.5
 
         #출력
         self.target_angle = target_angle 
@@ -235,16 +239,16 @@ class Total_Static:
         return vector_desired
     
     # Step4. PID control
-    def servo_pid_controller(self):
-        if self.count != self.docking_count or self.cam_end:
-            psi_desire = self.vector_choose(self.delete_vector_inside_obstacle(self.make_detecting_vector()))
-            control_angle = psi_desire - self.psi
+    def servo_pid_controller(self, psi, boat_x, boat_y):
+        if (self.count != self.docking_count) or self.cam_end:
+            psi_desire = self.vector_choose(self.delete_vector_inside_obstacle(self.make_detecting_vector(psi),psi, boat_x, boat_y), boat_x, boat_y)
+            control_angle = psi_desire - psi
             # 출력
             self.psi_desire = psi_desire
         else:
             control_angle = self.cam_control_angle
             # 출력
-            self.psi_desire = control_angle + self.psi
+            self.psi_desire = control_angle + psi
         
         if control_angle >= 180:
             control_angle = -180 + abs(control_angle) % 180
@@ -268,7 +272,10 @@ class Total_Static:
         return int(self.u_servo)
     
     def control_publish(self):
-        self.servo_pid_controller()
+        psi = self.psi
+        boat_x = self.boat_x
+        boat_y = self.boat_y
+        self.servo_pid_controller(psi, boat_x, boat_y)
         self.servo_pub.publish(self.u_servo)
         if self.count != self.docking_count or self.cam_end:
             self.thruster_pub.publish(self.u_thruster)
