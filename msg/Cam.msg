@@ -1,3 +1,3 @@
-std_msgs/Float64 cam_control_angle
-std_msgs/Float64 cam_u_thruster
+std_msgs/UInt16 cam_control_angle
+std_msgs/UInt16 cam_u_thruster
 std_msgs/Bool cam_end
