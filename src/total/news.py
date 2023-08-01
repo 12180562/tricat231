@@ -5,7 +5,6 @@ import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 import time
-import time
 import rospy
 import numpy as np
 
@@ -14,7 +13,7 @@ from math import sin, cos, radians, degrees, hypot, atan2
 from geometry_msgs.msg import Point
 from std_msgs.msg import Float64, UInt16, Bool
 from sensor_msgs.msg import Imu
-from tricat231_pkg.msg import ObstacleList, Cam
+from tricat231_pkg.msg import ObstacleList
 
 from utils import gnss_converter as gc
 from utils import static_obstacle_cal as so
@@ -37,7 +36,6 @@ class Total_Static:
         self.psi_desire = 0
         self.target_angle = 0
         self.count = 0
-        self.end = False
         
         #My Boat
         self.psi = 0
@@ -62,12 +60,6 @@ class Total_Static:
         
         #Lidar
         self.obstacles = [] 
-        
-        #Cam
-        self.docking_count = rospy.get_param("docking_count")
-        self.cam_control_angle = 0
-        self.cam_u_thruster = 0
-        self.cam_end = False
 
         #ROS
         # sub
@@ -75,17 +67,18 @@ class Total_Static:
         self.heading_sub = rospy.Subscriber("/heading", Float64, self.heading_callback, queue_size=1)
         self.enu_position_sub = rospy.Subscriber("/enu_position", Point, self.boat_position_callback, queue_size=1)
         self.obstacle_sub = rospy.Subscriber("/obstacles", ObstacleList, self.obstacle_callback, queue_size=1)
-        self.cam_data_sub = rospy.Subscriber("/cam_data", Cam, self.cam_data_callback, queue_size= 10)
 
         # pub
         self.servo_pub = rospy.Publisher("/servo", UInt16, queue_size=1)
         self.thruster_pub = rospy.Publisher("/thruster", UInt16, queue_size=1)
-        self.cam_pub = rospy.Publisher("/cam_check", Bool, queue_size=1)
+        self.finish_pub = rospy.Publisher("/finish_check", Bool, queue_size=1) # YOO 카메라 관련된 네이밍 필요 
+        self.finish = False
         
         # rviz pub
         self.psi_pub  = rospy.Publisher("/psi",Float64, queue_size=1)
         self.desire_pub = rospy.Publisher("/psi_desire", Float64, queue_size=1)
-        self.count_pub = rospy.Publisher("/count", UInt16, queue_size=1)
+        self.end_pub = rospy.Publisher("/end_check", Bool, queue_size=1) # Yoo 도착인지 뭔지 명확한 네이밍 필요
+        self.end = False
         
         #Static Obstacle
         self.angle_number = rospy.get_param("angle_number")
@@ -94,9 +87,6 @@ class Total_Static:
 
         self.range = rospy.get_param("so_range")
         self.non_cross_vector_len = 0
-        self.servo_pid_controller(self.psi, self.boat_x, self.boat_y)
-        # self.delete_vector_inside_obstacle(self.make_detecting_vector())
-        self.start_time = time.time()
 
     def yaw_rate_callback(self, msg):
         self.yaw_rate = msg.angular_velocity.z 
@@ -114,19 +104,11 @@ class Total_Static:
     def obstacle_callback(self, msg):
         self.obstacles = msg.obstacle
 
-    def cam_data_callback(self, msg):
-        self.cam_control_angle = msg.cam_control_angle
-        self.cam_u_thruster = msg.cam_u_thruster
-        self.cam_end = msg.cam_end
-
     # publish function
     def rviz_publish(self):
         self.psi_pub.publish(self.psi)
         self.desire_pub.publish(self.psi_desire)
-        self.count_pub.publish(self.count)
-    
-    def cam_publish(self):
-        self.cam_pub.publish(self.cam_end)
+        self.end_pub.publish(self.end)
 
     # senser conection check
     def is_all_connected(self):
@@ -151,7 +133,6 @@ class Total_Static:
         return self.distance_goal <= self.goal_range
 
     def next(self):
-        self.start_time = time.time()
         self.count += 1
         if self.count == len(self.remained_waypoint):
             pass
@@ -160,8 +141,9 @@ class Total_Static:
             self.goal_y = self.remained_waypoint[self.count][1] # y = 1
             
     # Step 1. make detecting vector
-    def make_detecting_vector(self, psi):
+    def make_detecting_vector(self):
         detecting_points = np.zeros([self.angle_number+1,3])
+        psi = self.psi
         angle_list = [psi]
 
         for i in range(int(self.angle_number/2)):
@@ -182,16 +164,16 @@ class Total_Static:
         return detecting_points, psi
                 
     # Step 2. delete vector inside obstacle
-    def delete_vector_inside_obstacle(self, detecting_points, psi, boat_x, boat_y):
+    def delete_vector_inside_obstacle(self, detecting_points,psi):
         static_OB_data = []
         for i in self.obstacles:
-            begin_x = boat_x + (-i.begin.x) * cos(radians(psi)) - i.begin.y * sin(radians(psi))
-            begin_y = boat_y + (-i.begin.x) * sin(radians(psi)) + i.begin.y * cos(radians(psi))
-            end_x = boat_x + (-i.end.x) * cos(radians(psi)) - i.end.y * sin(radians(psi))
-            end_y = boat_y + (-i.end.x) * sin(radians(psi)) + i.end.y * cos(radians(psi))
+            begin_x = self.boat_x + (-i.begin.x) * cos(radians(psi)) - i.begin.y * sin(radians(psi))
+            begin_y = self.boat_y + (-i.begin.x) * sin(radians(psi)) + i.begin.y * cos(radians(psi))
+            end_x = self.boat_x + (-i.end.x) * cos(radians(psi)) - i.end.y * sin(radians(psi))
+            end_y = self.boat_y + (-i.end.x) * sin(radians(psi)) + i.end.y * cos(radians(psi))
             static_OB_data.extend([begin_x, begin_y, end_x, end_y])
 
-        pA = [boat_x, boat_y]
+        pA = [self.boat_x, self.boat_y]
         
         non_cross_vector = []
         for i in range(self.angle_number+1):
@@ -206,21 +188,17 @@ class Total_Static:
                 non_cross_vector.append(detecting_points[i][2])
 
         if len(non_cross_vector) == 0:
-            if 90 >= self.detecting_angle > 60:
-                non_cross_vector.append(psi+60)
-                non_cross_vector.append(psi-60)
-            else:
-                non_cross_vector.append(detecting_points[self.angle_number][2])
-                non_cross_vector.append(detecting_points[self.angle_number-1][2])
+            non_cross_vector.append(detecting_points[self.angle_number][2])
+            non_cross_vector.append(detecting_points[self.angle_number-1][2])
 
         self.non_cross_vector_len = int(len(non_cross_vector))
         return non_cross_vector
 
     # Step3. choose vector
-    def vector_choose(self, non_cross_vector, boat_x, boat_y):
+    def vector_choose(self,non_cross_vector):
         minNum = 1000
         vector_desired = 0 
-        target_angle = degrees(atan2(self.goal_y - boat_y, self.goal_x - boat_x)) + 6.5
+        target_angle = degrees(atan2(self.goal_y - self.boat_y, self.goal_x - self.boat_x)) + 6.5
 
         #출력
         self.target_angle = target_angle 
@@ -244,16 +222,13 @@ class Total_Static:
         return vector_desired
     
     # Step4. PID control
-    def servo_pid_controller(self, psi, boat_x, boat_y):
-        if (self.count != self.docking_count) or self.cam_end:
-            psi_desire = self.vector_choose(self.delete_vector_inside_obstacle(self.make_detecting_vector(psi),psi, boat_x, boat_y), boat_x, boat_y)
-            control_angle = psi_desire - psi
-            # 출력
-            self.psi_desire = psi_desire
-        else:
-            control_angle = self.cam_control_angle
-            # 출력
-            self.psi_desire = control_angle + psi
+    def servo_pid_controller(self):
+        psi_desire = self.vector_choose(self.delete_vector_inside_obstacle(self.make_detecting_vector()))
+
+        control_angle = psi_desire - self.psi
+        
+        # 출력
+        self.psi_desire = psi_desire
         
         if control_angle >= 180:
             control_angle = -180 + abs(control_angle) % 180
@@ -275,24 +250,17 @@ class Total_Static:
             self.u_servo = self.servo_range[0]
 
         return int(self.u_servo)
+    
+    def thruster_control(self):
+        for i in range(1500, self.u_thruster, 50):
+            self.thruster_pub.publish(i)
+            time.sleep(0.1)
 
     def control_publish(self):
-        psi = self.psi
-        boat_x = self.boat_x
-        boat_y = self.boat_y
-        self.servo_pid_controller(psi, boat_x, boat_y)
+        self.servo_pid_controller()
         self.servo_pub.publish(self.u_servo)
-        if self.count != self.docking_count or self.cam_end:
-            # if time.time() - self.start_time < 1:
-            #     self.thruster_pub.publish(self.u_thruster-150)
-            # elif 1 <= time.time() - self.start_time < 2:
-            #     self.thruster_pub.publish(self.u_thruster-100)
-            # elif 2 <= time.time() - self.start_time < 3:
-            #     self.thruster_pub.publish(self.u_thruster-50)
-            # else:
-            self.thruster_pub.publish(self.u_thruster)                
-        else:
-            self.thruster_pub.publish(self.cam_u_thruster)
+        self.thruster_control()
+        # self.thruster_pub.publish(self.u_thruster)
     
     def print_state(self):
         print(f"------------------------------------\n \
@@ -309,6 +277,7 @@ def main():
     rospy.init_node("Total_Static", anonymous=False)
     rate = rospy.Rate(10) # 10 Hz
     total_static = Total_Static()
+
     
     while not total_static.is_all_connected():
         rospy.sleep(0.2)
@@ -320,7 +289,6 @@ def main():
         
         total_static.print_state()
 
-        # 종료 처리 부분
         if total_static.end:
             total_static.next()
             print(f"{total_static.count} arrive")
@@ -333,18 +301,10 @@ def main():
             else:
                 start_time = time.time()
                 while time.time() - start_time < 3:
-                    # total_static.u_servo = total_static.target_angle
-                    total_static.servo_pid_controller(total_static.psi, total_static.boat_x, total_static.boat_y)
                     total_static.servo_pub.publish(total_static.u_servo)
-                    total_static.thruster_pub.publish(total_static.u_thruster-50)
-                    # print((round(time.time() - start_time),2))
-                    if time.time() - start_time == 3:
-                        break
-                # total_static.servo_pub.publish(total_static.u_servo)
-                # total_static.thruster_pub.publish(1500)
-                # rospy.sleep(3)
-                # # pass
-        
+                    total_static.thruster_pub.publish(1550)
+                    print(time.time() - start_time)
+
         else:
             pass
 
