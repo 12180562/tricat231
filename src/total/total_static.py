@@ -4,6 +4,7 @@
 import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
+import time
 import rospy
 import numpy as np
 
@@ -142,11 +143,12 @@ class Total_Static:
     # Step 1. make detecting vector
     def make_detecting_vector(self):
         detecting_points = np.zeros([self.angle_number+1,3])
-        angle_list = [self.psi]
+        psi = self.psi
+        angle_list = [psi]
 
         for i in range(int(self.angle_number/2)):
-            angle_list.append(self.psi + (i+1)*self.detecting_angle/(self.angle_number/2))
-            angle_list.append(self.psi - (i+1)*self.detecting_angle/(self.angle_number/2))
+            angle_list.append(psi + (i+1)*self.detecting_angle/(self.angle_number/2))
+            angle_list.append(psi - (i+1)*self.detecting_angle/(self.angle_number/2))
         
         for j in range(len(angle_list)):
             detecting_points[j][0] = cos(radians(angle_list[j]))
@@ -159,16 +161,16 @@ class Total_Static:
             else:
                 detecting_points[j][2] = angle_list[j]
 
-        return detecting_points
+        return detecting_points, psi
                 
     # Step 2. delete vector inside obstacle
-    def delete_vector_inside_obstacle(self, detecting_points):
+    def delete_vector_inside_obstacle(self, detecting_points,psi):
         static_OB_data = []
         for i in self.obstacles:
-            begin_x = self.boat_x + (-i.begin.x) * cos(radians(self.psi)) - i.begin.y * sin(radians(self.psi))
-            begin_y = self.boat_y + (-i.begin.x) * sin(radians(self.psi)) + i.begin.y * cos(radians(self.psi))
-            end_x = self.boat_x + (-i.end.x) * cos(radians(self.psi)) - i.end.y * sin(radians(self.psi))
-            end_y = self.boat_y + (-i.end.x) * sin(radians(self.psi)) + i.end.y * cos(radians(self.psi))
+            begin_x = self.boat_x + (-i.begin.x) * cos(radians(psi)) - i.begin.y * sin(radians(psi))
+            begin_y = self.boat_y + (-i.begin.x) * sin(radians(psi)) + i.begin.y * cos(radians(psi))
+            end_x = self.boat_x + (-i.end.x) * cos(radians(psi)) - i.end.y * sin(radians(psi))
+            end_y = self.boat_y + (-i.end.x) * sin(radians(psi)) + i.end.y * cos(radians(psi))
             static_OB_data.extend([begin_x, begin_y, end_x, end_y])
 
         pA = [self.boat_x, self.boat_y]
@@ -249,10 +251,16 @@ class Total_Static:
 
         return int(self.u_servo)
     
+    def thruster_control(self):
+        for i in range(1500, self.u_thruster, 50):
+            self.thruster_pub.publish(i)
+            time.sleep(0.1)
+
     def control_publish(self):
         self.servo_pid_controller()
         self.servo_pub.publish(self.u_servo)
-        self.thruster_pub.publish(self.u_thruster)
+        self.thruster_control()
+        # self.thruster_pub.publish(self.u_thruster)
     
     def print_state(self):
         print(f"------------------------------------\n \
@@ -291,9 +299,11 @@ def main():
                 print("-------------Finished---------------")
                 break
             else:
-                # total_static.servo_pub.publish(total_static.u_servo)
-                # total_static.thruster_pub.publish(1500)
-                rospy.sleep(3)
+                start_time = time.time()
+                while time.time() - start_time < 3:
+                    total_static.servo_pub.publish(total_static.u_servo)
+                    total_static.thruster_pub.publish(1550)
+                    print(time.time() - start_time)
 
         else:
             pass
