@@ -5,6 +5,7 @@ import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 import time
+import time
 import rospy
 import numpy as np
 
@@ -178,7 +179,7 @@ class Total_Static:
             else:
                 detecting_points[j][2] = angle_list[j]
 
-        return detecting_points
+        return detecting_points, psi
                 
     # Step 2. delete vector inside obstacle
     def delete_vector_inside_obstacle(self, detecting_points, psi, boat_x, boat_y):

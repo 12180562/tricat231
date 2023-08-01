@@ -102,7 +102,7 @@ def main():
     rate = rospy.Rate(10) # 10Hz
     # while docking.webcam.isOpened():
     while not rospy.is_shutdown():
-         # get current positions of the trackbars
+        # get current positions of the trackbars
         cv.namedWindow('Colorbars')
         lower_color = np.array([cv.getTrackbarPos('lowH', 'Colorbars'), cv.getTrackbarPos('lowS', 'Colorbars'), cv.getTrackbarPos('lowV', 'Colorbars')])
         upper_color = np.array([cv.getTrackbarPos('highH', 'Colorbars'), cv.getTrackbarPos('highS', 'Colorbars'), cv.getTrackbarPos('highV', 'Colorbars')])
