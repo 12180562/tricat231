@@ -11,7 +11,7 @@ max_gap_in_set: 10
 point_set_size: 3
 
 # 그룹에서부터 점까지 최대 거리 ( x 0.1 meters )
-max_dist_to_ps_line: 1
+max_dist_to_ps_line: 2
 
 # 벽이라고 인정할 최소 길이 ( x 0.1 meters )
 min_wall_length: 30
