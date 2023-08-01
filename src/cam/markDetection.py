@@ -20,44 +20,72 @@ def mean_brightness(img):
     return dst
 
 # 탐지 범위에 따른 마스크 형성 및 외곽선 검출  
-def show_the_shape_contour(hsv_image,detecting_color):
-    mask = color_filtering(detecting_color, hsv_image)
-    contours, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE) # 컨투어 검출
-    contours = np.array(contours)
-#    contours = contours.astype(np.float)
-    return contours
+# def show_the_shape_contour(hsv_image,detecting_color):
+#     mask = color_filtering(detecting_color, hsv_image)
+#     contours, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE) # 컨투어 검출
+#     contours = np.array(contours)
+# #    contours = contours.astype(np.float)
+#     return contours
 
 # 이미지 내 특정 색상 검출
-def color_filtering(detecting_color, hsv_image):
+def get_color_range(detecting_color):
     if detecting_color == 1: # Blue
-        lower_color = np.array([110, 50, 50]) # np.array([100, 100, 100])
-        upper_color = np.array([130, 255, 255]) # np.array([130, 255, 255])
-        mask = cv.inRange(hsv_image, lower_color, upper_color) # 색상 범위에 해당하는 마스크 생성
+        lower_color = np.array([89, 50, 50])
+        upper_color = np.array([138, 255, 255])
     elif detecting_color == 2: # Green
-        lower_color = np.array([50, 50, 50]) # np.array([40, 100, 100])
-        upper_color = np.array([70, 255, 255]) # np.array([80, 255, 255])
-        mask = cv.inRange(hsv_image, lower_color, upper_color)
+        lower_color = np.array([50, 50, 50])
+        upper_color = np.array([70, 255, 255])
     elif detecting_color == 3: # Red
         lower_color = np.array([0, 100, 100]) 
-        upper_color = np.array([10, 255, 255]) 
-        mask = cv.inRange(hsv_image, lower_color, upper_color)
+        upper_color = np.array([10, 255, 255])
     elif detecting_color == 4: # Orange
         lower_color = np.array([10, 100, 100])
         upper_color = np.array([25, 255, 255])
-        mask = cv.inRange(hsv_image, lower_color, upper_color)
     elif detecting_color == 5: # Black
         lower_color = np.array([0, 0, 0])
         upper_color = np.array([255, 255, 30]) 
-        mask = cv.inRange(hsv_image, lower_color, upper_color)
     else:
-        pass
+        raise ValueError("detecting_color must be in the range [1, 5]")
+    
+    return lower_color, upper_color
+
+def color_filtering(detecting_color, hsv_image):
+    lower_color, upper_color = get_color_range(detecting_color)
+    mask = cv.inRange(hsv_image, lower_color, upper_color)
     return mask
 
-def show_the_shape_info(raw_image, detecting_shape,contours) :
-    contour_info, raw_image = shape_and_label(detecting_shape, raw_image, contours)
-#    cv.imshow("CONTROLLER", raw_image)
-    control_angle_angle, thruster_value = move_with_largest(contour_info, raw_image.shape[1]) # return : control_angle, thruster
-    return raw_image, control_angle_angle, thruster_value
+# def color_filtering(detecting_color, hsv_image):
+#     if detecting_color == 1: # Blue
+#         lower_color = np.array([110, 50, 50]) # np.array([100, 100, 100])
+#         upper_color = np.array([130, 255, 255]) # np.array([130, 255, 255])
+#         mask = cv.inRange(hsv_image, lower_color, upper_color) # 색상 범위에 해당하는 마스크 생성
+#     elif detecting_color == 2: # Green
+#         lower_color = np.array([50, 50, 50]) # np.array([40, 100, 100])
+#         upper_color = np.array([70, 255, 255]) # np.array([80, 255, 255])
+#         mask = cv.inRange(hsv_image, lower_color, upper_color)
+#     elif detecting_color == 3: # Red
+#         # lower_color = np.array([0, 100, 100]) 
+#         # upper_color = np.array([10, 255, 255])
+#         lower_color = np.array([15, 50, 90]) 
+#         upper_color = np.array([346, 96, 93])
+#         mask = cv.inRange(hsv_image, lower_color, upper_color)
+#     elif detecting_color == 4: # Orange
+#         lower_color = np.array([10, 100, 100])
+#         upper_color = np.array([25, 255, 255])
+#         mask = cv.inRange(hsv_image, lower_color, upper_color)
+#     elif detecting_color == 5: # Black
+#         lower_color = np.array([0, 0, 0])
+#         upper_color = np.array([255, 255, 30]) 
+#         mask = cv.inRange(hsv_image, lower_color, upper_color)
+#     else:
+#         pass
+#     return mask
+
+# def show_the_shape_info(raw_image, detecting_shape,contours) :
+#     contour_info, raw_image = shape_and_label(detecting_shape, raw_image, contours)
+# #    cv.imshow("CONTROLLER", raw_image)
+#     control_angle_angle, thruster_value = move_with_largest(contour_info, raw_image.shape[1]) # return : control_angle, thruster
+#     return raw_image, control_angle_angle, thruster_value
 
 ###################################
 # JJU_0721수정_3 : 함수 이름 find_centroid로 수정했음

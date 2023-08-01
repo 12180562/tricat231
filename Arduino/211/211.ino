@@ -6,8 +6,10 @@
 #include <Servo.h> 
 #include <ros.h>
 #include <std_msgs/UInt16.h>
+#include <Adafruit_NeoPixel.h>
 
 ros::NodeHandle  nh;
+
  
 int ch1; //스러스터  
 int ch2; //서보모터환
@@ -18,13 +20,16 @@ int val1;
 int val2;
 int relaypin = 10;
 int led = 12;
-unsigned long previousMillis = 0;
-int ledState = LOW;
+//unsigned long previousMillis = 0;
+//int ledState = LOW;
+
+int led_num = 8;
 
 Servo thruster1; //스러스터1
 Servo thruster2; //스러스터2
 Servo servo1;
 Servo servo2;    //서보모터
+Adafruit_NeoPixel neopixel = Adafruit_NeoPixel(led_num, led, NEO_GRBW + NEO_KHZ800);
 
 void servo_cb( const std_msgs::UInt16& cmd_msg){
   servo1.write(cmd_msg.data-2);
@@ -58,19 +63,26 @@ void setup()
   servo2.attach(9); //서보모터 9번핀
   servo1.writeMicroseconds(95); // initial state is Neutral
   servo2.writeMicroseconds(95); 
-  
+
+  neopixel.setBrightness(255); // 0~255 사이의 값으로 최대 밝기 조절 (255가 최대)
+  neopixel.begin();
+
+  uint32_t red = neopixel.Color(255, 0, 0, 0);
+  uint32_t green = neopixel.Color(0, 255, 0, 0);
+  uint32_t yellow = neopixel.Color(255, 255, 0, 0);
   //delay(1000);
   //Serial.begin(9600);
 }
 
 void loop()
 {
-    unsigned long currentMillis = millis();
+    neopixel.clear();
+    //unsigned long currentMillis = millis();
     ch5 = pulseIn(ip5,HIGH);
   {
     if(ch5 < 1450)
       {
-        if (currentMillis - previousMillis >= 1000) {
+        /*if (currentMillis - previousMillis >= 1000) {
           previousMillis = currentMillis;
           if (ledState == LOW) {
             ledState = HIGH;
@@ -78,13 +90,24 @@ void loop()
             ledState = LOW;
           }
           digitalWrite(led, ledState);
+        } */
+        for(int i = 0; i < led_num; ++i){
+          neopixel.setPixelColor(i, yellow);
+          neopixel.show();
+          //delay(50); 
         }
         autonomous();
       }
     else if(ch5 > 1450)
       {
         rc();
-        digitalWrite(led, HIGH);
+
+        for(int i = 0; i < led_num; ++i){
+          neopixel.setPixelColor(i, green);
+          neopixel.show();
+          //delay(50); 
+        }
+        //digitalWrite(led, HIGH);
       }
   }
 }
