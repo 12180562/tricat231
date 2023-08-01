@@ -33,17 +33,17 @@ def get_color_range(detecting_color):
         lower_color = np.array([89, 50, 50])
         upper_color = np.array([138, 255, 255])
     elif detecting_color == 2: # Green
-        lower_color = np.array([50, 50, 50])
-        upper_color = np.array([70, 255, 255])
+        lower_color = np.array([30, 50, 50])
+        upper_color = np.array([80, 255, 255])
     elif detecting_color == 3: # Red
-        lower_color = np.array([0, 100, 100]) 
-        upper_color = np.array([10, 255, 255])
+        lower_color = np.array([119, 172, 140]) 
+        upper_color = np.array([179, 255, 255])
     elif detecting_color == 4: # Orange
-        lower_color = np.array([10, 100, 100])
-        upper_color = np.array([25, 255, 255])
+        lower_color = np.array([10, 200, 213])
+        upper_color = np.array([23, 255, 255])
     elif detecting_color == 5: # Black
-        lower_color = np.array([0, 0, 0])
-        upper_color = np.array([255, 255, 30]) 
+        lower_color = np.array([96, 60, 27])
+        upper_color = np.array([144, 255, 255]) 
     else:
         raise ValueError("detecting_color must be in the range [1, 5]")
     
