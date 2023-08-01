@@ -75,4 +75,4 @@ margin: 0.3
 detecting_color: 3
 # detecting_shape : Circle = 0, Triangle = 3, Rectangle = 4, cross = 12
 detecting_shape: 4
-docking_count: 10
+docking_count: 1

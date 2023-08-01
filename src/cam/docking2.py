@@ -80,7 +80,7 @@ class Docking :
         contours = np.array(contours)
         min_area = 5000
         contour_info, cam = markDetection.shape_and_label(self.detecting_shape, cam, contours, min_area)
-        cv.imshow("CONTROLLER", raw_image)
+        cv.imshow("CONTROLLER", cam)
         # cv.imshow("MASK", mask)
         control_angle, thruster_value, size = markDetection.move_with_largest(contour_info, cam.shape[1])
 

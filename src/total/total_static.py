@@ -5,7 +5,6 @@ import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 import time
-import time
 import rospy
 import numpy as np
 
@@ -66,7 +65,7 @@ class Total_Static:
         #Cam
         self.docking_count = rospy.get_param("docking_count")
         self.cam_control_angle = 0
-        self.cam_u_thruster = 0
+        self.cam_u_thruster = 1500
         self.cam_end = False
 
         #ROS
@@ -179,7 +178,7 @@ class Total_Static:
             else:
                 detecting_points[j][2] = angle_list[j]
 
-        return detecting_points, psi
+        return detecting_points
                 
     # Step 2. delete vector inside obstacle
     def delete_vector_inside_obstacle(self, detecting_points, psi, boat_x, boat_y):

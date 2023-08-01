@@ -28,58 +28,30 @@ def mean_brightness(img):
 #     return contours
 
 # 이미지 내 특정 색상 검출
-def get_color_range(detecting_color):
+def color_filtering(detecting_color, hsv_image):
     if detecting_color == 1: # Blue
         lower_color = np.array([89, 50, 50])
         upper_color = np.array([138, 255, 255])
+        mask = cv.inRange(hsv_image, lower_color, upper_color) # 색상 범위에 해당하는 마스크 생성
     elif detecting_color == 2: # Green
         lower_color = np.array([30, 50, 50])
         upper_color = np.array([80, 255, 255])
+        mask = cv.inRange(hsv_image, lower_color, upper_color)
     elif detecting_color == 3: # Red
-        lower_color = np.array([119, 172, 140]) 
-        upper_color = np.array([179, 255, 255])
+        lower_color = np.array([119, 66, 187]) 
+        upper_color = np.array([179, 155, 255])
+        mask = cv.inRange(hsv_image, lower_color, upper_color)
     elif detecting_color == 4: # Orange
         lower_color = np.array([10, 200, 213])
         upper_color = np.array([23, 255, 255])
+        mask = cv.inRange(hsv_image, lower_color, upper_color)
     elif detecting_color == 5: # Black
         lower_color = np.array([96, 60, 27])
-        upper_color = np.array([144, 255, 255]) 
+        upper_color = np.array([144, 255, 255])
+        mask = cv.inRange(hsv_image, lower_color, upper_color)
     else:
-        raise ValueError("detecting_color must be in the range [1, 5]")
-    
-    return lower_color, upper_color
-
-def color_filtering(detecting_color, hsv_image):
-    lower_color, upper_color = get_color_range(detecting_color)
-    mask = cv.inRange(hsv_image, lower_color, upper_color)
+        pass
     return mask
-
-# def color_filtering(detecting_color, hsv_image):
-#     if detecting_color == 1: # Blue
-#         lower_color = np.array([110, 50, 50]) # np.array([100, 100, 100])
-#         upper_color = np.array([130, 255, 255]) # np.array([130, 255, 255])
-#         mask = cv.inRange(hsv_image, lower_color, upper_color) # 색상 범위에 해당하는 마스크 생성
-#     elif detecting_color == 2: # Green
-#         lower_color = np.array([50, 50, 50]) # np.array([40, 100, 100])
-#         upper_color = np.array([70, 255, 255]) # np.array([80, 255, 255])
-#         mask = cv.inRange(hsv_image, lower_color, upper_color)
-#     elif detecting_color == 3: # Red
-#         # lower_color = np.array([0, 100, 100]) 
-#         # upper_color = np.array([10, 255, 255])
-#         lower_color = np.array([15, 50, 90]) 
-#         upper_color = np.array([346, 96, 93])
-#         mask = cv.inRange(hsv_image, lower_color, upper_color)
-#     elif detecting_color == 4: # Orange
-#         lower_color = np.array([10, 100, 100])
-#         upper_color = np.array([25, 255, 255])
-#         mask = cv.inRange(hsv_image, lower_color, upper_color)
-#     elif detecting_color == 5: # Black
-#         lower_color = np.array([0, 0, 0])
-#         upper_color = np.array([255, 255, 30]) 
-#         mask = cv.inRange(hsv_image, lower_color, upper_color)
-#     else:
-#         pass
-#     return mask
 
 # def show_the_shape_info(raw_image, detecting_shape,contours) :
 #     contour_info, raw_image = shape_and_label(detecting_shape, raw_image, contours)
@@ -172,8 +144,8 @@ def move_with_largest(contour_info, raw_image_width):
 #    print("Contour Info After Filtering:", contour_info)  # Print contour_info after filtering
     Limage_limit = raw_image_width / 2 - 10
     Rimage_limit = raw_image_width / 2 + 10
-    control_angle = 93
-    thruster = 1550 # thruster_mid
+    control_angle = 0
+    thruster = 1500
     size = 0
     if len(contour_info) > 0: # contour에 area, center가 입력되었을 때 ( 도형이 1개 이상 인식되었을 때 )
         contour_info.sort(key=lambda x: x[0], reverse=True)  # 도형 면적 기준으로 area, center 내림차순 정렬
@@ -189,26 +161,26 @@ def move_with_largest(contour_info, raw_image_width):
         #    print(centroid_x, Limage_limit, largest_width, raw_image_width, "Move Left")
         #    print(contour_info)
             # control_angle
-            print("Left")
-            control_angle = 81
+            # print("Left")
+            control_angle = -20
 
         elif centroid_x > Rimage_limit :
         # and largest_width < raw_image_width / a: # center의 x좌표가 화면 절반보다 오른쪽에 있을 때 : 오른쪽으로 회전
         #    print(centroid_x, Limage_limit, largest_width, raw_image_width, "Move Right")
         #    print(contour_info)
-            print("Right")
-            control_angle = 105
+            # print("Right")
+            control_angle = 20
 
         elif Limage_limit < centroid_x < Rimage_limit :
             if largest_width < raw_image_width / a :
-                print("Move Front")
+                # print("Move Front")
                 size = 10
-                control_angle = 93
+                control_angle = 0
                 thruster = 1550 # thruster_max
             elif largest_width > raw_image_width / a :
-                print("STOP")
+                # print("STOP")
                 size = 100
-                control_angle = 93
+                control_angle = 0
                 thruster = 1500 # thruster_min
         ## 예외case
         # elif centroid_x < Limage_limit and largest_width > raw_image_width / a : 
@@ -216,8 +188,9 @@ def move_with_largest(contour_info, raw_image_width):
         # elif centroid_x > Rimage_limit and largest_width > raw_image_width / a :
         #     print("case2") 
     else:
-        print("No contour found")
-    print("control_angle : ", control_angle, "thruster : ", thruster)
+        pass
+        # print("No contour found")
+    # print("control_angle : ", control_angle, "thruster : ", thruster)
     return control_angle, thruster, size
 #    print(contour_info)  # Print contour_info for debugging
 
