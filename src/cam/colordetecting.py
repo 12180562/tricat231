@@ -51,7 +51,7 @@ class ColorDetect :
         contours, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
         contours = np.array(contours)
         min_area = 5000
-        _, cam = markDetection.shape_and_label(self.detecting_shape, cam, contours, min_area)
+        _, cam = markDetection.shape_detection(self.detecting_shape, cam, contours, min_area)
 
         images = mask
 

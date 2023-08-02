@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #-*- coding:utf-8 -*-
 
+import time
 import cv2 as cv
 import numpy as np
 
@@ -163,42 +164,50 @@ def setLabel(img, pts, label):
 
 def move_to_largest(contour_info, raw_image_width):
     # 제일 큰 도형에 대한 연산 수행
-    Limage_limit = raw_image_width / 2 - 10
-    Rimage_limit = raw_image_width / 2 + 10
+    # Limage_limit = raw_image_width / 2 - 10
+    # Rimage_limit = raw_image_width / 2 + 10
+    Limage_limit = raw_image_width / 2
+    Rimage_limit = raw_image_width / 2
     control_angle = 0
     thruster = 1500
     size = 0
+    a = 2 # 도형 크기 비 (직진 여부 확인용)
+    detect = False
     if len(contour_info) > 1:
         detect, largest_area, largest_center = contour_info
         centroid_x = largest_center[0]
-        a = 5 # 도형 크기 비 (직진 여부 확인용)
         largest_width = largest_area  # 도형의 가로 길이를 largest_area로 간주
 
-        if centroid_x < Limage_limit :
-        # and largest_width < raw_image_width / a: # center의 x좌표가 화면 절반보다 왼쪽에 있을 때 : 왼쪽으로 회전
-        #    print(centroid_x, Limage_limit, largest_width, raw_image_width, "Move Left")
-        #    print(contour_info)
-            # control_angle
-            # print("Left")
-            control_angle = -20
+        if centroid_x < Limage_limit: # Turn Left
+            control_angle = 1
 
-        elif centroid_x > Rimage_limit :
-        # and largest_width < raw_image_width / a: # center의 x좌표가 화면 절반보다 오른쪽에 있을 때 : 오른쪽으로 회전
-        #    print(centroid_x, Limage_limit, largest_width, raw_image_width, "Move Right")
-        #    print(contour_info)
-            # print("Right")
-            control_angle = 20
+        elif centroid_x > Rimage_limit: # Turn Right
+            control_angle = 2
 
-        elif Limage_limit < centroid_x < Rimage_limit :
+        elif Limage_limit < centroid_x < Rimage_limit: # Move Front
             if largest_width < raw_image_width / a :
-                # print("Move Front")
                 size = 10
                 control_angle = 0
-                thruster = 1550 # thruster_max
-            elif largest_width > raw_image_width / a :
-                # print("STOP")
+                thruster = 1550
+            elif largest_width > raw_image_width / a: # STOP
                 size = 100
                 control_angle = 0
-                thruster = 1500 # thruster_min
-    return control_angle, thruster, size
+                thruster = 1500
+    
+    return control_angle, thruster, size, detect
 
+class TimeBasedTrigger:
+    def __init__(self, duration):
+        self.start_time = None
+        self.duration = duration
+
+    def trigger(self, value):
+        if value:
+            if self.start_time is None:
+                self.start_time = time.time()
+            elif time.time() - self.start_time >= self.duration:
+                return True
+        else:
+            self.start_time = None
+
+        return False

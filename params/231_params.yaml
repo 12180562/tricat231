@@ -78,10 +78,22 @@ detecting_color: 3
 # detecting_shape : Circle = 0, Triangle = 3, Rectangle = 4, cross = 12
 detecting_shape: 4
 docking_count: 1
-color_bound: {
-    1: ([89, 50, 50], [138, 255, 255]),  # Blue
-    2: ([30, 50, 50], [80, 255, 255]),   # Green
-    3: ([171, 160, 147], [255, 255, 255]),  # Red
-    4: ([10, 200, 213], [23, 255, 255]),  # Orange
-    5: ([96, 60, 27], [144, 255, 255])   # Black
-}
+# color_bound: 
+#   1: 
+#     - [89, 50, 50]
+#     - [138, 255, 255]  # Blue
+#   2: 
+#     - [30, 50, 50]
+#     - [80, 255, 255]   # Green
+#   3: 
+#     - [171, 160, 147]
+#     - [255, 255, 255]  # Red
+#   4: 
+#     - [10, 200, 213]
+#     - [23, 255, 255]  # Orange
+#   5: 
+#     - [96, 60, 27]
+#     - [144, 255, 255]   # Black
+
+min_area: 10
+target_detect_area: 20

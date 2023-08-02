@@ -67,6 +67,7 @@ class Total_Static:
         self.cam_control_angle = 0
         self.cam_u_thruster = 1500
         self.cam_end = False
+        self.cam_detect = False
 
         #ROS
         # sub
@@ -115,6 +116,7 @@ class Total_Static:
         self.cam_control_angle = msg.cam_control_angle
         self.cam_u_thruster = msg.cam_u_thruster
         self.cam_end = msg.cam_end
+        self.cam_detect = msg.cam_detect
 
     # publish function
     def rviz_publish(self):
@@ -240,16 +242,20 @@ class Total_Static:
     
     # Step4. PID control
     def servo_pid_controller(self, psi, boat_x, boat_y):
-        if (self.count != self.docking_count) or self.cam_end:
-            psi_desire = self.vector_choose(self.delete_vector_inside_obstacle(self.make_detecting_vector(psi),psi, boat_x, boat_y), boat_x, boat_y)
-            control_angle = psi_desire - psi
-            # 출력
-            self.psi_desire = psi_desire
-        else:
-            control_angle = self.cam_control_angle
-            # 출력
-            self.psi_desire = control_angle + psi
-        
+        # if (self.count != self.docking_count) or self.cam_end:
+        #     psi_desire = self.vector_choose(self.delete_vector_inside_obstacle(self.make_detecting_vector(psi),psi, boat_x, boat_y), boat_x, boat_y)
+        #     control_angle = psi_desire - psi
+        #     # 출력
+        #     self.psi_desire = psi_desire
+        # else:
+        #     control_angle = self.cam_control_angle
+        #     # 출력
+        #     self.psi_desire = control_angle + psi
+        psi_desire = self.vector_choose(self.delete_vector_inside_obstacle(self.make_detecting_vector(psi),psi, boat_x, boat_y), boat_x, boat_y)
+        control_angle = psi_desire - psi
+        # 출력
+        self.psi_desire = psi_desire
+
         if control_angle >= 180:
             control_angle = -180 + abs(control_angle) % 180
         elif control_angle <= -180:
@@ -277,7 +283,8 @@ class Total_Static:
         boat_y = self.boat_y
         self.servo_pid_controller(psi, boat_x, boat_y)
         self.servo_pub.publish(self.u_servo)
-        if self.count != self.docking_count or self.cam_end:
+        self.thruster_pub.publish(self.u_thruster)
+        # if self.count != self.docking_count or self.cam_end:
             # if time.time() - self.start_time < 1:
             #     self.thruster_pub.publish(self.u_thruster-150)
             # elif 1 <= time.time() - self.start_time < 2:
@@ -285,9 +292,9 @@ class Total_Static:
             # elif 2 <= time.time() - self.start_time < 3:
             #     self.thruster_pub.publish(self.u_thruster-50)
             # else:
-            self.thruster_pub.publish(self.u_thruster)                
-        else:
-            self.thruster_pub.publish(self.cam_u_thruster)
+            # self.thruster_pub.publish(self.u_thruster)                
+        # else:
+            # self.thruster_pub.publish(self.cam_u_thruster)
     
     def print_state(self):
         print(f"------------------------------------\n \
@@ -307,18 +314,18 @@ class Total_Static:
 
         if self.end_check():
             start_time = time.time()
-            while time.time() - start_time < 3:
-                self.servo_pub.publish(self.servo_middle)
-                self.thruster_pub.publish(1500)
+            # while time.time() - start_time < 3:
+            #     self.servo_pub.publish(self.servo_middle)
+            #     self.thruster_pub.publish(1500)
 
-                if time.time() - start_time == 3:
-                    break
+            #     if time.time() - start_time == 3:
+            #         break
 
-            if 디텍팅 왼쪽:
+            if self.cam_control_angle == 1: # 왼쪽
                 self.next(5)
                 self.control_publish()
 
-            elif 디텍팅 오른쪽:
+            elif self.cam_control_angle == 2: # 오른쪽
                 self.next(6)
                 self.control_publish()
 
@@ -337,19 +344,19 @@ class Total_Static:
         self.control_publish()
 
         if self.end_check():
-            start_time = time.time()
-            while time.time() - start_time < 3:
-                self.servo_pub.publish(self.servo_middle)
-                self.thruster_pub.publish(1500)
+            # start_time = time.time()
+            # while time.time() - start_time < 3:
+            #     self.servo_pub.publish(self.servo_middle)
+            #     self.thruster_pub.publish(1500)
 
-                if time.time() - start_time == 3:
-                    break
+            #     if time.time() - start_time == 3:
+            #         break
 
-            if 디텍팅 왼쪽:
+            if self.cam_control_angle == 1: # 왼쪽
                 self.next(6)
                 self.control_publish()
 
-            elif 디텍팅 오른쪽:
+            elif self.cam_control_angle == 2: #오른쪽
                 self.next(7)
                 self.control_publish()
 
@@ -402,8 +409,11 @@ def main():
                             break
             
             else:
-                # total_static.moving_left()
-                total_static.moving_right()
+                if total_static.cam_detect:
+                    # total_static.moving_left()
+                    total_static.moving_right()
+                else:
+                    pass
         else:
             pass
 
