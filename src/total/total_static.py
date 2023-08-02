@@ -94,8 +94,6 @@ class Total_Static:
         self.range = rospy.get_param("so_range")
         self.non_cross_vector_len = 0
         self.servo_pid_controller(self.psi, self.boat_x, self.boat_y)
-        # self.delete_vector_inside_obstacle(self.make_detecting_vector())
-        self.start_time = time.time()
 
     def yaw_rate_callback(self, msg):
         self.yaw_rate = msg.angular_velocity.z 
@@ -149,14 +147,12 @@ class Total_Static:
         self.distance_goal = hypot(self.boat_x-self.goal_x, self.boat_y-self.goal_y)
         return self.distance_goal <= self.goal_range
 
-    def next(self):
-        self.start_time = time.time()
-        self.count += 1
-        if self.count == len(self.remained_waypoint):
+    def next(self, num):
+        if num == len(self.remained_waypoint):
             pass
         else:
-            self.goal_x = self.remained_waypoint[self.count][0] # x = 0
-            self.goal_y = self.remained_waypoint[self.count][1] # y = 1
+            self.goal_x = self.remained_waypoint[num][0] # x = 0
+            self.goal_y = self.remained_waypoint[num][1] # y = 1
             
     # Step 1. make detecting vector
     def make_detecting_vector(self, psi):
@@ -304,6 +300,70 @@ class Total_Static:
             servo : {self.u_servo}\n \
             count: {self.count}\n")
 
+# 카메라
+    def moving_left(self):
+        self.next(3)
+        self.control_publish()
+
+        if self.end_check():
+            start_time = time.time()
+            while time.time() - start_time < 3:
+                self.servo_pub.publish(self.servo_middle)
+                self.thruster_pub.publish(1500)
+
+                if time.time() - start_time == 3:
+                    break
+
+            if 디텍팅 왼쪽:
+                self.next(5)
+                self.control_publish()
+
+            elif 디텍팅 오른쪽:
+                self.next(6)
+                self.control_publish()
+
+            else:
+                self.next(4)
+                self.control_publish()
+                if self.end_check():
+                    self.next(7)
+                    self.control_publish()
+                    
+        if self.end_check():
+            self.count = 7
+
+    def moving_right(self):
+        self.next(4)
+        self.control_publish()
+
+        if self.end_check():
+            start_time = time.time()
+            while time.time() - start_time < 3:
+                self.servo_pub.publish(self.servo_middle)
+                self.thruster_pub.publish(1500)
+
+                if time.time() - start_time == 3:
+                    break
+
+            if 디텍팅 왼쪽:
+                self.next(6)
+                self.control_publish()
+
+            elif 디텍팅 오른쪽:
+                self.next(7)
+                self.control_publish()
+
+            else:
+                self.next(3)
+                self.control_publish()
+                if self.end_check():
+                    self.next(5)
+                    self.control_publish()
+
+        if self.end_check():            
+            self.count = 7
+    
+
 def main():
     rospy.init_node("Total_Static", anonymous=False)
     rate = rospy.Rate(10) # 10 Hz
@@ -319,31 +379,31 @@ def main():
         
         total_static.print_state()
 
-        # 종료 처리 부분
         if total_static.end:
-            total_static.next()
-            print(f"{total_static.count} arrive")
+            if total_static.count == 0 or total_static.count >= 7:
+                total_static.count += 1
 
-            if total_static.count == len(total_static.remained_waypoint):
-                total_static.servo_pub.publish(total_static.servo_middle)
-                total_static.thruster_pub.publish(1500)
-                print("-------------Finished---------------")
-                break
+                total_static.next(total_static.count)
+                print(f"{total_static.count} arrive")
+
+                if total_static.count == len(total_static.remained_waypoint):
+                    total_static.servo_pub.publish(total_static.servo_middle)
+                    total_static.thruster_pub.publish(1500)
+                    print("-------------Finished---------------")
+                    break
+                else:
+                    start_time = time.time()
+                    while time.time() - start_time < 3:
+                        total_static.servo_pid_controller(total_static.psi, total_static.boat_x, total_static.boat_y)
+                        total_static.servo_pub.publish(total_static.u_servo)
+                        total_static.thruster_pub.publish(total_static.u_thruster-50)
+
+                        if time.time() - start_time == 3:
+                            break
+            
             else:
-                start_time = time.time()
-                while time.time() - start_time < 3:
-                    # total_static.u_servo = total_static.target_angle
-                    total_static.servo_pid_controller(total_static.psi, total_static.boat_x, total_static.boat_y)
-                    total_static.servo_pub.publish(total_static.u_servo)
-                    total_static.thruster_pub.publish(total_static.u_thruster-50)
-                    # print((round(time.time() - start_time),2))
-                    if time.time() - start_time == 3:
-                        break
-                # total_static.servo_pub.publish(total_static.u_servo)
-                # total_static.thruster_pub.publish(1500)
-                # rospy.sleep(3)
-                # # pass
-        
+                # total_static.moving_left()
+                total_static.moving_right()
         else:
             pass
 
