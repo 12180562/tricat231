@@ -340,10 +340,14 @@ class Total_Static:
             self.count = 7
 
     def moving_right(self):
-        self.next(4)
+        self.next(1)
         self.control_publish()
 
         if self.end_check():
+            self.servo_pub.publish(self.servo_middle)
+            self.thruster_pub.publish(1500)
+            
+            if self.cam_detect == True:
             # start_time = time.time()
             # while time.time() - start_time < 3:
             #     self.servo_pub.publish(self.servo_middle)
@@ -352,23 +356,23 @@ class Total_Static:
             #     if time.time() - start_time == 3:
             #         break
 
-            if self.cam_control_angle == 1: # 왼쪽
-                self.next(6)
-                self.control_publish()
-
-            elif self.cam_control_angle == 2: #오른쪽
-                self.next(7)
-                self.control_publish()
-
-            else:
-                self.next(3)
-                self.control_publish()
-                if self.end_check():
-                    self.next(5)
+                if self.cam_control_angle == 1: # 왼쪽
+                    self.next(3)
                     self.control_publish()
 
+                elif self.cam_control_angle == 2: #오른쪽
+                    self.next(2)
+                    self.control_publish()
+
+            # else:
+            #     self.next(3)
+            #     self.control_publish()
+            #     if self.end_check():
+            #         self.next(5)
+            #         self.control_publish()
+
         if self.end_check():            
-            self.count = 7
+            self.count = 4
     
 
 def main():
@@ -401,10 +405,11 @@ def main():
                 else:
                     start_time = time.time()
                     while time.time() - start_time < 3:
-                        total_static.servo_pid_controller(total_static.psi, total_static.boat_x, total_static.boat_y)
-                        total_static.servo_pub.publish(total_static.u_servo)
-                        total_static.thruster_pub.publish(total_static.u_thruster-50)
-
+                        # total_static.servo_pid_controller(total_static.psi, total_static.boat_x, total_static.boat_y)
+                        # total_static.servo_pub.publish(total_static.u_servo)
+                        # total_static.thruster_pub.publish(total_static.u_thruster-50)
+                        total_static.servo_pub.publish(total_static.servo_middle)
+                        total_static.thruster_pub.publish(1500)
                         if time.time() - start_time == 3:
                             break
             
