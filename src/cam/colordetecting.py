@@ -23,8 +23,8 @@ class ColorDetect :
 
         # create trackbars for color change
 
-        cv.createTrackbar('lowH', 'controller', 0, 179, self.nothing)
-        cv.createTrackbar('highH', 'controller', 255, 179, self.nothing)
+        cv.createTrackbar('lowH', 'controller', 0, 255, self.nothing)
+        cv.createTrackbar('highH', 'controller', 255, 255, self.nothing)
 
         cv.createTrackbar('lowS', 'controller', 0, 255, self.nothing)
         cv.createTrackbar('highS', 'controller', 255, 255, self.nothing)

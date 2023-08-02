@@ -4,66 +4,88 @@
 import cv2 as cv
 import numpy as np
 
-# 영상 이미지 전처리
-def image_preprocessing(cam): 
-    raw_image = cam
-    img0 = mean_brightness(raw_image) # 평균 밝기로 보정하는 함수
-    img = cv.GaussianBlur(img0, (5, 5), 0) # 가우시안 필터 적용 # (n,n) : 가우시안 필터의 표준편차. 조정하면서 해야 함
-    hsv_image = cv.cvtColor(img, cv.COLOR_BGR2HSV) # BGR 형식의 이미지를 HSV 형식으로 전환
-    return hsv_image
-
+# 평균 밝기로 화면 밝기 조정
 def mean_brightness(img):
+    """
+    Args:
+        img (numpy.ndarray): 입력 이미지
+    
+    Returns:
+        dst (numpy.ndarray): 평균 밝기가 조절된 이미지
+    """
     fixed = 100  # 이 값 주변으로 평균 밝기 조절함
     m = cv.mean(img)  # 평균 밝기
     scalar = (-int(m[0]) + fixed, -int(m[1]) + fixed, -int(m[2]) + fixed, 0)
     dst = cv.add(img, scalar)
     return dst
 
-# 탐지 범위에 따른 마스크 형성 및 외곽선 검출  
-# def show_the_shape_contour(hsv_image,detecting_color):
-#     mask = color_filtering(detecting_color, hsv_image)
-#     contours, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE) # 컨투어 검출
-#     contours = np.array(contours)
-# #    contours = contours.astype(np.float)
-#     return contours
+# 영상 이미지 전처리
+def image_preprocessing(raw_image, brightness=False, blur=False):
+    """
+    Args:
+        raw_img (np.ndarray): Input raw image from the camera
+        blur (bool): Whether to do Gaussian Blur or not. Fix kernel size with 5
+        brightness (bool): Whether to adjust brightness with mean brightness value
+    
+    Returns:
+        np.ndarray: preprocessed image
+    """ 
+    img = raw_image
 
-# 이미지 내 특정 색상 검출
-def color_filtering(detecting_color, hsv_image):
-    if detecting_color == 1: # Blue
-        lower_color = np.array([89, 50, 50])
-        upper_color = np.array([138, 255, 255])
-        mask = cv.inRange(hsv_image, lower_color, upper_color) # 색상 범위에 해당하는 마스크 생성
-    elif detecting_color == 2: # Green
-        lower_color = np.array([30, 50, 50])
-        upper_color = np.array([80, 255, 255])
-        mask = cv.inRange(hsv_image, lower_color, upper_color)
-    elif detecting_color == 3: # Red
-        lower_color = np.array([119, 66, 187]) 
-        upper_color = np.array([179, 155, 255])
-        mask = cv.inRange(hsv_image, lower_color, upper_color)
-    elif detecting_color == 4: # Orange
-        lower_color = np.array([10, 200, 213])
-        upper_color = np.array([23, 255, 255])
-        mask = cv.inRange(hsv_image, lower_color, upper_color)
-    elif detecting_color == 5: # Black
-        lower_color = np.array([96, 60, 27])
-        upper_color = np.array([144, 255, 255])
-        mask = cv.inRange(hsv_image, lower_color, upper_color)
+    if brightness == True:
+        img = mean_brightness(img)
+    if blur == True:
+        """
+        Gaussian blur가 중심 픽셀 주위에 커널을 적용하기 때문에 적용할 시 커널 크기는 항상 홀수여야 함
+        홀수 크기의 커널을 사용하면 중심 픽셀이 항상 있지만, 짝수 크기의 커널을 사용하면 중심 픽셀이 없음
+        (4, 4): 불가 / (5, 5): 가능
+        """
+        img = cv.GaussianBlur(img, (5, 5), 0)
+    img = cv.cvtColor(img, cv.COLOR_BGR2HSV)
+
+    return img
+
+# 이미지 내 특정 색상 검출 후 마스크로 변환
+def get_color_bounds(detecting_color, color_bounds):
+    """
+    Args:
+        detecting_color (int)
+        color_bounds (Dictionary)
+    
+    Returns:
+        lower_color (ndarray)
+        upper_color (ndarray)
+    """ 
+    if detecting_color in color_bounds.keys():
+        lower_color = np.array(color_bounds[detecting_color][0])
+        upper_color = np.array(color_bounds[detecting_color][1])
     else:
         pass
+
+    return lower_color, upper_color
+
+def color_filtering(detecting_color, color_bounds, img):
+    """
+    Args:
+        detecting_color (int)
+        color_bounds (Dictionary)
+        img (np.ndarray): preprocessed image with 3 channels
+    
+    Returns:
+        mask (np.ndarray): gray-scale image with specific color range
+    """
+    lower_color, upper_color = get_color_bounds(detecting_color, color_bounds)
+    mask = cv.inRange(img, lower_color, upper_color) # 색상 범위에 해당하는 마스크 생성
     return mask
 
-# def show_the_shape_info(raw_image, detecting_shape,contours) :
-#     contour_info, raw_image = shape_and_label(detecting_shape, raw_image, contours)
-# #    cv.imshow("CONTROLLER", raw_image)
-#     control_angle_angle, thruster_value = move_with_largest(contour_info, raw_image.shape[1]) # return : control_angle, thruster
-#     return raw_image, control_angle_angle, thruster_value
+def morph_contour(img):
+    # 모폴로지 연산
+    morph_kernel = np.ones((9, 9), np.uint8)
+    morph = cv.morphologyEx(img, cv.MORPH_CLOSE, morph_kernel)
+    contours, _ = cv.findContours(morph, cv.RETR_CCOMP, cv.CHAIN_APPROX_NONE)
+    return contours
 
-###################################
-# JJU_0721수정_3 : 함수 이름 find_centroid로 수정했음
-# JJU_ : docking.py에서 함수 이름 바꿔주시고, shape_and_label이랑 find_centroid return type 확인해서 수정해야 합니당
-###################################
-
+# 원하는 도형의 윤곽선 면적과 중심점 찾기, 도형 labelling    
 def find_centroid(contour):
     center = (0,0)
     # 윤곽선의 중심점 계산
@@ -75,58 +97,62 @@ def find_centroid(contour):
         return center
     else:
         return None
-
-###################################
-# JJU_0721수정_2 : 원 인식 부분 수정함 & area 변수 계산 추가함 & shape_and_label 함수 매개변수 min_area 추가함
-# JJU_ : 지난번에 수정 안된걸 드렸나봐요 (?). 원 인식을 위해서 원래 뒤에 find_area_centroid 함수에서 계산했던 'area' 연산을 이 함수로 뺐어용
-###################################
-
-def shape_and_label(detecting_shape, raw_image, contours, min_area):    # 원하는 도형의 윤곽선 면적과 중심점 찾기, 도형 labelling
+    
+def shape_detection(detecting_shape, target_detect_area, min_area, contours):
+    detect = False
+    max_area = 0
     contour_info = []
     for contour in contours:
-        # 윤곽선의 면적 계산
-        area = cv.contourArea(contour)
-        if area < min_area: # 인식 면적 제한 두기
+        # 도형 근사
+        """
+        cv2.approxPolyDP(curve, epsilon, closed, approxCurve=None) -> approxCurve : 외곽선을 근사화(단순화)
+          • curve: 입력 곡선 좌표. numpy.ndarray. shape=(K, 1, 2)
+          • epsilon: 근사화 정밀도 조절. 입력 곡선과 근사화 곡선 간의 최대 거리. e.g) cv2.arcLength(curve) * 0.02
+          • closed: True를 전달하면 폐곡선으로 인식
+          • approxCurve: 근사화된 곡선 좌표. numpy.ndarray. shape=(K', 1, 2)
+
+        cv2.arcLength(curve, closed) -> retval: 외곽선 길이를 반환
+          • curve: 외곽선 좌표. numpy.ndarray. shape=(K, 1, 2)
+          • closed: True이면 폐곡선으로 간주
+          • retval: 외곽선 길이 
+        """
+        approx = cv.approxPolyDP(contour, cv.arcLength(contour, True) * 0.02, True)
+
+        # 도형 넓이
+        area = cv.contourArea(approx)
+        # 인식 면적 제한
+        if area < min_area: 
             continue
-        approx = cv.approxPolyDP(contour, cv.arcLength(contour, True) * 0.5, True)
-
-        # cv2.approxPolyDP(curve, epsilon, closed, approxCurve=None) -> approxCurve : 외곽선을 근사화(단순화)
-        #   • curve: 입력 곡선 좌표. numpy.ndarray. shape=(K, 1, 2)
-        #   • epsilon: 근사화 정밀도 조절. 입력 곡선과 근사화 곡선 간의 최대 거리. e.g) cv2.arcLength(curve) * 0.02
-        #   • closed: True를 전달하면 폐곡선으로 인식
-        #   • approxCurve: 근사화된 곡선 좌표. numpy.ndarray. shape=(K', 1, 2)
-
-        # cv2.arcLength(curve, closed) -> retval: 외곽선 길이를 반환
-        #   • curve: 외곽선 좌표. numpy.ndarray. shape=(K, 1, 2)
-        #   • closed: True이면 폐곡선으로 간주
-        #   • retval: 외곽선 길이 
-
-        line_num = len(approx)                
-        if detecting_shape == 3 and line_num == 3:  # 삼각형
-            center = find_centroid(contour)
-            setLabel(raw_image, contour, 'TRIANGLE')
-        elif detecting_shape == 4 and line_num == 4:  # 사각형
-            center = find_centroid(contour)
-            setLabel(raw_image, contour, 'RECTANGLE')
-        elif detecting_shape == 12 and line_num == 12:  # 십자가
-            center = find_centroid(contour)
-            setLabel(raw_image, contour, 'CROSS')
-        elif detecting_shape == 0 and line_num == 0: # 원
-            _, radius = cv.minEnclosingCircle(approx)  # 원으로 근사
-            ratio = radius * radius * 3.14 / (area + 0.000001)  # 해당 넓이와 정원 간의 넓이 비
-            if 0.5 < ratio < 2:  # 원에 가까울 때만 필터링
-                center = find_centroid(contour)
-                setLabel(raw_image, contour, 'CIRCLE')
+        # 변의 개수
+        line_num = len(approx)
+        # 탐지 여부 및 도형 구분
+        if (line_num == detecting_shape) and (area >= target_detect_area):
+            if detecting_shape == 0:
+                _, radius = cv.minEnclosingCircle(approx)  # 원으로 근사
+                ratio = radius * radius * 3.14 / (area + 0.000001)  # 해당 넓이와 정원 간의 넓이 비
+                if 0.5 < ratio < 2:  # 원에 가까울 때만 필터링
+                    detect = True
+                    center = find_centroid(contour)
             else:
-                center = None
+                detect = True
+                center = find_centroid(contour)
         else:
-            center = None
-            
-        if area is not None and center is not None:
-            contour_info.append((area, center))
-            cv.circle(raw_image, center, 5, (255, 0, 0), -1)
+            detect = False
 
-    return contour_info, raw_image
+        if detect:
+            if area > max_area:
+                contour_info = [detect, area, center]
+                max_area = area
+            else:
+                detect = False
+                contour_info = [detect]
+
+    return contour_info
+
+def window(img, center, label):
+    cv.circle(img, center, 5, (255, 0, 0), -1)
+    setLabel(img, center, label)
+    return img
 
 def setLabel(img, pts, label):
     (x,y,w,h) = cv.boundingRect(pts)
@@ -135,23 +161,15 @@ def setLabel(img, pts, label):
     cv.rectangle(img, pt1, pt2, (0,255,0), 2)
     cv.putText(img, label, (pt1[0], pt1[1]-3), cv.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255))
 
-# 수정 필요
-
-def move_with_largest(contour_info, raw_image_width):
-    # 제일 큰 도형 선택
-#    print("Contour Info Before Filtering:", contour_info)  # Print contour_info before filtering
-    contour_info = [info for info in contour_info if info[0] is not None]  # (area, center) 가 None인 경우 필터링
-#    print("Contour Info After Filtering:", contour_info)  # Print contour_info after filtering
+def move_to_largest(contour_info, raw_image_width):
+    # 제일 큰 도형에 대한 연산 수행
     Limage_limit = raw_image_width / 2 - 10
     Rimage_limit = raw_image_width / 2 + 10
     control_angle = 0
     thruster = 1500
     size = 0
-    if len(contour_info) > 0: # contour에 area, center가 입력되었을 때 ( 도형이 1개 이상 인식되었을 때 )
-        contour_info.sort(key=lambda x: x[0], reverse=True)  # 도형 면적 기준으로 area, center 내림차순 정렬
-        largest_contour = contour_info[0] # 제일 큰 도형 선택
-        # 제일 큰 도형에 대한 연산 수행
-        largest_area, largest_center = largest_contour
+    if len(contour_info) > 1:
+        detect, largest_area, largest_center = contour_info
         centroid_x = largest_center[0]
         a = 5 # 도형 크기 비 (직진 여부 확인용)
         largest_width = largest_area  # 도형의 가로 길이를 largest_area로 간주
@@ -182,16 +200,5 @@ def move_with_largest(contour_info, raw_image_width):
                 size = 100
                 control_angle = 0
                 thruster = 1500 # thruster_min
-        ## 예외case
-        # elif centroid_x < Limage_limit and largest_width > raw_image_width / a : 
-        #     print("case1")
-        # elif centroid_x > Rimage_limit and largest_width > raw_image_width / a :
-        #     print("case2") 
-    else:
-        pass
-        # print("No contour found")
-    # print("control_angle : ", control_angle, "thruster : ", thruster)
     return control_angle, thruster, size
-#    print(contour_info)  # Print contour_info for debugging
-
 
