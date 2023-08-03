@@ -6,6 +6,7 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 import rospy
 import cv2 as cv
+import numpy as np
 from std_msgs.msg import UInt16
 from tricat231_pkg.msg import Cam
 import cam.markDetection as markDetection
@@ -14,13 +15,13 @@ class Docking :
         self.end = False
         self.webcam = cv.VideoCapture(0)
 
-        self.detecting_color = rospy.get_param("detecting_color")
-        self.detecting_shape = rospy.get_param("detecting_shape")
+        # self.detecting_color = rospy.get_param("detecting_color")
+        # self.detecting_shape = rospy.get_param("detecting_shape")
         # self.color_bounds = rospy.get_param("color_bounds")
-        self.min_area = rospy.get_param("min_area")
-        self.target_detect_area = rospy.get_param("target_detect_area")
-        # self.detecting_color = 3
-        # self.detecting_shape = 3
+        # self.min_area = rospy.get_param("min_area")
+        # self.target_detect_area = rospy.get_param("target_detect_area")
+        self.detecting_color = 3
+        self.detecting_shape = 3
         self.color_bounds = {
             1: ([89, 50, 50], [138, 255, 255]),  # Blue
             2: ([30, 50, 50], [80, 255, 255]),   # Green
@@ -28,8 +29,8 @@ class Docking :
             4: ([10, 200, 213], [23, 255, 255]),  # Orange
             5: ([96, 60, 27], [144, 255, 255])   # Black
         }
-        # self.min_area = 10
-        # self.target_detect_area = 20
+        self.min_area = 10
+        self.target_detect_area = 20
         
         self.cam_control_angle = 0
         self.cam_u_thruster = 0
@@ -56,7 +57,19 @@ class Docking :
         cam_msg.cam_end.data = self.cam_end
         cam_msg.cam_detect.data = self.cam_detect
         self.cam_data_pub.publish(cam_msg)
-        
+
+    # def get_trackbar_pos(self):
+    #     """get trackbar poses and set each values"""
+    #     # self.color_range[0][0] = cv2.getTrackbarPos("color1 min", "controller")
+    #     # self.color_range[1][0] = cv2.getTrackbarPos("color1 max", "controller")
+    #     # self.color_range[0][1] = cv2.getTrackbarPos("color2 min", "controller")
+    #     # self.color_range[1][1] = cv2.getTrackbarPos("color2 max", "controller")
+    #     # self.color_range[0][2] = cv2.getTrackbarPos("color3 min", "controller")
+    #     # self.color_range[1][2] = cv2.getTrackbarPos("color3 max", "controller")
+    #     # self.mark_detect_area = cv2.getTrackbarPos("mark_detect_area", "controller")
+    #     # self.target_detect_area = cv2.getTrackbarPos("target_detect_area", "controller")
+    #     # self.arrival_target_area = cv2.getTrackbarPos("arrival_target_area", "controller")
+
     def control(self):
         _, cam = self.webcam.read() # webcam으로 연결된 정보 읽어오기
 
@@ -67,6 +80,11 @@ class Docking :
         # 탐지 색상 범위에 따라 마스크 형성
         mask = markDetection.color_filtering(self.detecting_color, self.color_bounds, hsv_image)
 
+        raw_image = cv.resize(raw_image, dsize=(0, 0), fx=1, fy=1)  # 카메라 데이터 원본
+        mask = cv.resize(mask, dsize=(0, 0), fx=1, fy=1)  # 색 추출 결과
+        bgr_image = cv.cvtColor(mask, cv.COLOR_GRAY2BGR)
+        col1 = np.vstack([raw_image, bgr_image])
+        cv.imshow("controller", col1)
         # 형성된 마스크에서 외곽선 검출
         # contours, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
         # 모폴로지 연산(빈 공간 완화 & 노이즈 제거) 사용 시
@@ -75,7 +93,7 @@ class Docking :
         contour_info = markDetection.shape_detection(self.detecting_shape, self.target_detect_area, self.min_area, contours)
         # img = markDetection.window(raw_image, contour_info, "Circle")
         # cv.imshow("CONTROLLER", img)
-        cv.imshow("MASK", mask)
+        # cv.imshow("MASK",v mask)
 
         control_angle, thruster_value, size, detect  = markDetection.move_to_largest(contour_info, raw_image.shape[1])
         print(control_angle, thruster_value, size, detect)
@@ -84,7 +102,7 @@ class Docking :
 
 def main():
     docking = Docking()
-    time_trigger = markDetection.TimeBasedTrigger(3)
+    time_trigger = markDetection.TimeBasedTrigger(1.5)
     rospy.init_node('Docking')
     
     if not docking.webcam.isOpened(): # 캠이 연결되지 않았을 경우 # true시 캠이 잘 연결되어있음
