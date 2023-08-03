@@ -29,7 +29,7 @@ class Docking :
             "2": ([30, 50, 50], [80, 255, 255]),   # Green
             "3": ([0, 116, 153], [255, 255, 255]),  # Red
             "4": ([10, 200, 213], [23, 255, 255]),  # Orange
-            "5": ([96, 60, 27], [144, 255, 255])   # Black
+            "5": ([89, 16, 21], [151, 255, 255])   # Black
         }
         self.min_area = 10
         self.target_detect_area = 20
@@ -82,11 +82,6 @@ class Docking :
         # 탐지 색상 범위에 따라 마스크 형성
         mask = markDetection.color_filtering(self.detecting_color, self.color_bounds, hsv_image)
 
-        raw_image = cv.resize(raw_image, dsize=(0, 0), fx=1, fy=1)  # 카메라 데이터 원본
-        mask = cv.resize(mask, dsize=(0, 0), fx=1, fy=1)  # 색 추출 결과
-        bgr_image = cv.cvtColor(mask, cv.COLOR_GRAY2BGR)
-        col1 = np.vstack([raw_image, bgr_image])
-        cv.imshow("controller", col1)
         # 형성된 마스크에서 외곽선 검출
         # contours, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
         # 모폴로지 연산(빈 공간 완화 & 노이즈 제거) 사용 시
@@ -96,6 +91,14 @@ class Docking :
         # img = markDetection.window(raw_image, contour_info, "Circle")
         # cv.imshow("CONTROLLER", img)
         # cv.imshow("MASK", mask)
+        
+        img = markDetection.window(raw_image, contour_info, "Triangle")
+
+        img = cv.resize(img, dsize=(0, 0), fx=1, fy=1)  # 카메라 데이터 원본
+        mask = cv.resize(mask, dsize=(0, 0), fx=1, fy=1)  # 색 추출 결과
+        bgr_image = cv.cvtColor(mask, cv.COLOR_GRAY2BGR)
+        col1 = np.vstack([img, bgr_image])
+        cv.imshow("controller", col1)
 
         control_angle, thruster_value, size, detect  = markDetection.move_to_largest(contour_info, raw_image.shape[1])
         print(control_angle, thruster_value, size, detect)

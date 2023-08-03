@@ -102,7 +102,7 @@ def find_centroid(contour):
 def shape_detection(detecting_shape, target_detect_area, min_area, contours):
     detect = 30 # None
     max_area = 0
-    contour_info = []
+    contour_info = [detect, None, None, None]
     for contour in contours:
         # 도형 근사
         """
@@ -148,17 +148,22 @@ def shape_detection(detecting_shape, target_detect_area, min_area, contours):
 
         if detect == 10:
             if area > max_area:
-                contour_info = [detect, area, center]
+                contour_info = [detect, area, center, contour]
                 max_area = area
             else:
                 detect = 30 # None
-                contour_info = [detect]
+                contour_info = [detect, None, None, None]
+        else:
+            contour_info = [detect, None, None, None]
 
     return contour_info
 
-def window(img, center, label):
-    cv.circle(img, center, 5, (255, 0, 0), -1)
-    setLabel(img, center, label)
+def window(img, contour_info, label): # 중심점이 유효한지 확인
+    if len(contour_info) > 0 and contour_info[0] == 10:
+        cv.circle(img, contour_info[2], 5, (255, 0, 0), -1)
+        setLabel(img, contour_info[3], label)
+    else:
+        img = img
     return img
 
 def setLabel(img, pts, label):
@@ -180,25 +185,26 @@ def move_to_largest(contour_info, raw_image_width):
     a = 2 # 도형 크기 비 (직진 여부 확인용)
     detect = 30 # None
     if len(contour_info) > 1:
-        detect, largest_area, largest_center = contour_info
-        centroid_x = largest_center[0]
-        largest_width = largest_area  # 도형의 가로 길이를 largest_area로 간주
+        detect, largest_area, largest_center, _ = contour_info
+        if contour_info[2] is not None and detect == 10:
+            centroid_x = largest_center[0]
+            largest_width = largest_area  # 도형의 가로 길이를 largest_area로 간주
 
-        if centroid_x < Limage_limit: # Turn Left
-            control_angle = 1
+            if centroid_x < Limage_limit: # Turn Left
+                control_angle = 1
 
-        elif centroid_x > Rimage_limit: # Turn Right
-            control_angle = 2
+            elif centroid_x > Rimage_limit: # Turn Right
+                control_angle = 2
 
-        elif Limage_limit < centroid_x < Rimage_limit: # Move Front
-            if largest_width < raw_image_width / a :
-                size = 10
-                control_angle = 0
-                thruster = 1550
-            elif largest_width > raw_image_width / a: # STOP
-                size = 100
-                control_angle = 0
-                thruster = 1500
+            elif Limage_limit < centroid_x < Rimage_limit: # Move Front
+                if largest_width < raw_image_width / a :
+                    size = 10
+                    control_angle = 0
+                    thruster = 1550
+                elif largest_width > raw_image_width / a: # STOP
+                    size = 100
+                    control_angle = 0
+                    thruster = 1500
     
     return control_angle, thruster, size, detect
 

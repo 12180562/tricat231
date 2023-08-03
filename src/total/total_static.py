@@ -241,7 +241,7 @@ class Total_Static:
         return vector_desired
     
     # Step4. PID control
-    def servo_pid_controller(self, psi, boat_x, boat_y, ):
+    def servo_pid_controller(self, psi, boat_x, boat_y):
         # if (self.count != self.docking_count) or self.cam_end:
         #     psi_desire = self.vector_choose(self.delete_vector_inside_obstacle(self.make_detecting_vector(psi),psi, boat_x, boat_y), boat_x, boat_y)
         #     control_angle = psi_desire - psi
@@ -381,7 +381,6 @@ class Total_Static:
 
         if self.end_check():            
             self.count = 6
-    
 
 def main():
     rospy.init_node("Total_Static", anonymous=False)
