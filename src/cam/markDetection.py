@@ -57,9 +57,9 @@ def get_color_bounds(detecting_color, color_bounds):
         lower_color (ndarray)
         upper_color (ndarray)
     """ 
-    if detecting_color in color_bounds.keys():
-        lower_color = np.array(color_bounds[detecting_color][0])
-        upper_color = np.array(color_bounds[detecting_color][1])
+    if str(detecting_color) in color_bounds.keys():
+        lower_color = np.array(color_bounds[str(detecting_color)][0])
+        upper_color = np.array(color_bounds[str(detecting_color)][1])
     else:
         pass
 
@@ -100,7 +100,7 @@ def find_centroid(contour):
         return None
     
 def shape_detection(detecting_shape, target_detect_area, min_area, contours):
-    detect = False
+    detect = 30 # None
     max_area = 0
     contour_info = []
     for contour in contours:
@@ -115,7 +115,13 @@ def shape_detection(detecting_shape, target_detect_area, min_area, contours):
         cv2.arcLength(curve, closed) -> retval: 외곽선 길이를 반환
           • curve: 외곽선 좌표. numpy.ndarray. shape=(K, 1, 2)
           • closed: True이면 폐곡선으로 간주
-          • retval: 외곽선 길이 
+          • retval: 외곽선 길이
+
+        approxPolyDP()의 반환인 approx의 구조 (삼각형일 때)
+          • type: numpy.ndarray
+          • shape: (3, 1, 2) -> 변 개수, 1, [행, 열] 정보이므로 요소 두 개
+          • 예: [[[105, 124]], [[107, 205]], [[226, 163]]]
+        때에 따라서는 같은 도형이 여러 개 발견될 수도 있음
         """
         approx = cv.approxPolyDP(contour, cv.arcLength(contour, True) * 0.02, True)
 
@@ -128,24 +134,24 @@ def shape_detection(detecting_shape, target_detect_area, min_area, contours):
         line_num = len(approx)
         # 탐지 여부 및 도형 구분
         if (line_num == detecting_shape) and (area >= target_detect_area):
-            if detecting_shape == 0:
+            if detecting_shape == 0: # 원일 때
                 _, radius = cv.minEnclosingCircle(approx)  # 원으로 근사
                 ratio = radius * radius * 3.14 / (area + 0.000001)  # 해당 넓이와 정원 간의 넓이 비
                 if 0.5 < ratio < 2:  # 원에 가까울 때만 필터링
-                    detect = True
+                    detect = 10 # True
                     center = find_centroid(contour)
             else:
-                detect = True
+                detect = 10 # True
                 center = find_centroid(contour)
         else:
-            detect = False
+            detect = 20 # False
 
-        if detect:
+        if detect == 10:
             if area > max_area:
                 contour_info = [detect, area, center]
                 max_area = area
             else:
-                detect = False
+                detect = 30 # None
                 contour_info = [detect]
 
     return contour_info
@@ -172,7 +178,7 @@ def move_to_largest(contour_info, raw_image_width):
     thruster = 1500
     size = 0
     a = 2 # 도형 크기 비 (직진 여부 확인용)
-    detect = False
+    detect = 30 # None
     if len(contour_info) > 1:
         detect, largest_area, largest_center = contour_info
         centroid_x = largest_center[0]

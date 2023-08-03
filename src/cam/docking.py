@@ -20,14 +20,16 @@ class Docking :
         # self.color_bounds = rospy.get_param("color_bounds")
         # self.min_area = rospy.get_param("min_area")
         # self.target_detect_area = rospy.get_param("target_detect_area")
+
+        # TEST set
         self.detecting_color = 3
         self.detecting_shape = 3
         self.color_bounds = {
-            1: ([89, 50, 50], [138, 255, 255]),  # Blue
-            2: ([30, 50, 50], [80, 255, 255]),   # Green
-            3: ([0, 116, 153], [255, 255, 255]),  # Red
-            4: ([10, 200, 213], [23, 255, 255]),  # Orange
-            5: ([96, 60, 27], [144, 255, 255])   # Black
+            "1": ([89, 50, 50], [138, 255, 255]),  # Blue
+            "2": ([30, 50, 50], [80, 255, 255]),   # Green
+            "3": ([0, 116, 153], [255, 255, 255]),  # Red
+            "4": ([10, 200, 213], [23, 255, 255]),  # Orange
+            "5": ([96, 60, 27], [144, 255, 255])   # Black
         }
         self.min_area = 10
         self.target_detect_area = 20
@@ -35,7 +37,7 @@ class Docking :
         self.cam_control_angle = 0
         self.cam_u_thruster = 0
         self.cam_end = False
-        self.cam_detect = False
+        self.cam_detect = 30 # None
 
         #sub
         self.count_sub = rospy.Subscriber("/count", UInt16, self.count_callback, queue_size=10)
@@ -93,7 +95,7 @@ class Docking :
         contour_info = markDetection.shape_detection(self.detecting_shape, self.target_detect_area, self.min_area, contours)
         # img = markDetection.window(raw_image, contour_info, "Circle")
         # cv.imshow("CONTROLLER", img)
-        # cv.imshow("MASK",v mask)
+        # cv.imshow("MASK", mask)
 
         control_angle, thruster_value, size, detect  = markDetection.move_to_largest(contour_info, raw_image.shape[1])
         print(control_angle, thruster_value, size, detect)

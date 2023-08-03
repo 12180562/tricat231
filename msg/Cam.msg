@@ -1,4 +1,4 @@
 std_msgs/UInt16 cam_control_angle
 std_msgs/UInt16 cam_u_thruster
 std_msgs/Bool cam_end
-std_msgs/Bool cam_detect
+std_msgs/UInt16 cam_detect
