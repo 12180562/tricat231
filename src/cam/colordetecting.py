@@ -47,15 +47,7 @@ class ColorDetect :
         upper_color = np.array([cv.getTrackbarPos('highH', 'controller'), cv.getTrackbarPos('highS', 'controller'), cv.getTrackbarPos('highV', 'controller')])
         mask = cv.inRange(hsv_image, lower_color, upper_color)
 
-        # 3. 형성된 마스크에서 외곽선 검출
-        contours, _ = cv.findContours(mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-        contours = np.array(contours)
-        min_area = 5000
-        _, cam = markDetection.shape_detection(self.detecting_shape, cam, contours, min_area)
-
-        images = mask
-
-        return images, cam
+        return mask
 
 def main():
     detect = ColorDetect()
@@ -65,8 +57,8 @@ def main():
         exit()
         
     while detect.webcam.isOpened():
-        images, cam = detect.run()
-        cv.imshow("controller", images)
+        mask = detect.run()
+        cv.imshow("controller", mask)
         # cv.imshow("cam", cam)
         if (cv.waitKey(1) & 0xFF == 27):
             break       
