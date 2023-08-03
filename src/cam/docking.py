@@ -15,24 +15,24 @@ class Docking :
         self.end = False
         self.webcam = cv.VideoCapture(0)
 
-        # self.detecting_color = rospy.get_param("detecting_color")
-        # self.detecting_shape = rospy.get_param("detecting_shape")
-        # self.color_bounds = rospy.get_param("color_bounds")
-        # self.min_area = rospy.get_param("min_area")
-        # self.target_detect_area = rospy.get_param("target_detect_area")
+        self.detecting_color = rospy.get_param("detecting_color")
+        self.detecting_shape = rospy.get_param("detecting_shape")
+        self.color_bounds = rospy.get_param("color_bounds")
+        self.min_area = rospy.get_param("min_area")
+        self.target_detect_area = rospy.get_param("target_detect_area")
 
         # TEST set
-        self.detecting_color = 3
-        self.detecting_shape = 3
-        self.color_bounds = {
-            "1": ([89, 50, 50], [138, 255, 255]),  # Blue
-            "2": ([30, 50, 50], [80, 255, 255]),   # Green
-            "3": ([0, 116, 153], [255, 255, 255]),  # Red
-            "4": ([10, 200, 213], [23, 255, 255]),  # Orange
-            "5": ([89, 16, 21], [151, 255, 255])   # Black
-        }
-        self.min_area = 10
-        self.target_detect_area = 20
+        # self.detecting_color = 3
+        # self.detecting_shape = 3
+        # self.color_bounds = {
+        #     "1": ([89, 50, 50], [138, 255, 255]),  # Blue
+        #     "2": ([30, 50, 50], [80, 255, 255]),   # Green
+        #     "3": ([0, 116, 153], [255, 255, 255]),  # Red
+        #     "4": ([10, 200, 213], [23, 255, 255]),  # Orange
+        #     "5": ([89, 16, 21], [151, 255, 255])   # Black
+        # }
+        # self.min_area = 10
+        # self.target_detect_area = 20
         
         self.cam_control_angle = 0
         self.cam_u_thruster = 0
@@ -121,7 +121,7 @@ def main():
         if time_trigger.trigger(detect):
             docking.publish_value(cam_control_angle, cam_u_thruster, docking.cam_end, detect)
         else:
-            docking.publish_value(cam_control_angle, cam_u_thruster, docking.cam_end, detect=False)
+            docking.publish_value(cam_control_angle, cam_u_thruster, docking.cam_end, detect=30)
 
         if (cv.waitKey(1) & 0xFF == 27) or size == 100: # 카메라 창에서 esc버튼 꺼짐
             docking.cam_end = True

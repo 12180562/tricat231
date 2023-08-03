@@ -144,7 +144,7 @@ def shape_detection(detecting_shape, target_detect_area, min_area, contours):
                 detect = 10 # True
                 center = find_centroid(contour)
         else:
-            detect = 20 # False
+            detect = 30 # False
 
         if detect == 10:
             if area > max_area:

@@ -67,7 +67,7 @@ class Total_Static:
         self.cam_control_angle = 0
         self.cam_u_thruster = 1500
         self.cam_end = False
-        self.cam_detect = False
+        self.cam_detect = 30
 
         #ROS
         # sub
@@ -94,7 +94,7 @@ class Total_Static:
 
         self.range = rospy.get_param("so_range")
         self.non_cross_vector_len = 0
-        self.servo_pid_controller(self.psi, self.boat_x, self.boat_y)
+        self.servo_pid_controller(self.psi, self.boat_x, self.boat_y, self.vector_choose(self.delete_vector_inside_obstacle(self.make_detecting_vector(self.psi),self.psi, self.boat_x, self.boat_y), self.boat_x, self.boat_y))
         self.cam_angle = 0
 
     def yaw_rate_callback(self, msg):
@@ -151,6 +151,7 @@ class Total_Static:
         return self.distance_goal <= self.goal_range
 
     def next(self, num):
+        print(f"{self.count} arrive")
         self.count = num
         if num == len(self.remained_waypoint):
             pass
@@ -243,7 +244,7 @@ class Total_Static:
         return vector_desired
     
     # Step4. PID control
-    def servo_pid_controller(self, psi, boat_x, boat_y):
+    def servo_pid_controller(self, psi, boat_x, boat_y, angle):
         # if (self.count != self.docking_count) or self.cam_end:
         #     psi_desire = self.vector_choose(self.delete_vector_inside_obstacle(self.make_detecting_vector(psi),psi, boat_x, boat_y), boat_x, boat_y)
         #     control_angle = psi_desire - psi
@@ -253,10 +254,10 @@ class Total_Static:
         #     control_angle = self.cam_control_angle
         #     # 출력
         #     self.psi_desire = control_angle + psi
-        if self.count == 1 or self.count == 2:
-            psi_desire = self.cam_angle
-        else:
-            psi_desire = self.vector_choose(self.delete_vector_inside_obstacle(self.make_detecting_vector(psi),psi, boat_x, boat_y), boat_x, boat_y)
+        # if self.count == 2 or self.count == 3:
+        #     psi_desire = self.cam_angle
+        # else:
+        psi_desire = angle
             
         control_angle = psi_desire - psi
         # 출력
@@ -287,7 +288,7 @@ class Total_Static:
         psi = self.psi
         boat_x = self.boat_x
         boat_y = self.boat_y
-        self.servo_pid_controller(psi, boat_x, boat_y)
+        self.servo_pid_controller(psi, boat_x, boat_y, self.vector_choose(self.delete_vector_inside_obstacle(self.make_detecting_vector(psi),psi, boat_x, boat_y), boat_x, boat_y))
         self.servo_pub.publish(self.u_servo)
         self.thruster_pub.publish(self.u_thruster)
         # if self.count != self.docking_count or self.cam_end:
@@ -320,7 +321,7 @@ class Total_Static:
         
         self.cam_angle = degrees(atan2(heading_y - self.boat_y, heading_x - self.boat_x)) + 6.5
         
-        self.goal_range = 0.75 #도킹시 골레인지 줄이기
+        self.goal_range = 0.8 #도킹시 골레인지 줄이기
         self.next(1)
         self.control_publish()
 
@@ -355,38 +356,48 @@ class Total_Static:
 
 
     def moving_right(self):
+        self.goal_range = 0.8 #도킹시 골레인지 줄이기
+        self.next(2)
+        self.control_publish()
+        
         heading_x = (self.remained_waypoint[4][0] + self.remained_waypoint[5][0])/2
         heading_y = (self.remained_waypoint[4][1] + self.remained_waypoint[5][1])/2
         
-        self.cam_angle = degrees(atan2(heading_y - self.boat_y, heading_x - self.boat_x)) + 6.5
-        
-        self.goal_range = 0.75 #도킹시 골레인지 줄이기
-        self.next(2)
-        self.control_publish()
-
         if self.end_check():
             start_time = time.time()
             while time.time() - start_time < 3:
+                
+                # self.servo_pub.publish(self.servo_middle) #헤딩 맞추기
+                # self.thruster_pub.publish(1500)
+                self.servo_pid_controller(self.psi, self.boat_x, self.boat_y, degrees(atan2(heading_y - self.boat_y, heading_x - self.boat_x)) + 6.5)
 
-                self.servo_pub.publish(self.u_servo)#헤딩 맞추기
+                self.servo_pub.publish(self.u_servo) #헤딩 맞추기
                 self.thruster_pub.publish(1550)
-
+                print("여기까진 잘됨")
                 if time.time() - start_time == 3:
                     break
-
+            print("나오냐?")
+            if self.cam_detect == "data: 30":
+                self.cam_detect = 30
+            print(self.cam_detect)
+            
             if self.cam_detect == 10:
                 if self.cam_control_angle == 1: # 왼쪽
+                    print("111111")
                     self.next(4)
                     self.control_publish()
 
                 elif self.cam_control_angle == 2: #오른쪽
+                    print("2222222222222")
                     self.next(5)
                     self.control_publish()
 
-            elif self.cam_detect == 20:
+            elif self.cam_detect == 30:
                 self.next(1)
                 self.control_publish()
+                print("1도착")
                 if self.end_check():
+                    print("제바랑아아아ㅏㄹ")
                     self.next(3)
                     self.control_publish()
 
@@ -407,7 +418,7 @@ def main():
         total_static.end = total_static.end_check()
         
         total_static.print_state()
-
+        print(total_static.cam_detect)
         if total_static.end:
             if total_static.count == 0 or total_static.count >= 5:
                 total_static.count += 1
@@ -432,11 +443,11 @@ def main():
                             break
             
             else:
-                if total_static.cam_detect:
+                # if total_static.cam_detect:
                     # total_static.moving_left()
-                    total_static.moving_right()
-                else:
-                    pass
+                total_static.moving_right()
+                # else:
+                    # pass
         else:
             pass
 
