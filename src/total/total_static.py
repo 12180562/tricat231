@@ -241,7 +241,7 @@ class Total_Static:
         return vector_desired
     
     # Step4. PID control
-    def servo_pid_controller(self, psi, boat_x, boat_y):
+    def servo_pid_controller(self, psi, boat_x, boat_y, ):
         # if (self.count != self.docking_count) or self.cam_end:
         #     psi_desire = self.vector_choose(self.delete_vector_inside_obstacle(self.make_detecting_vector(psi),psi, boat_x, boat_y), boat_x, boat_y)
         #     control_angle = psi_desire - psi
@@ -340,14 +340,22 @@ class Total_Static:
             self.count = 7
 
     def moving_right(self):
-        self.next(1)
+        self.goal_range = 0.75 #도킹시 골레인지 줄이기
+        self.next(3)
         self.control_publish()
 
         if self.end_check():
-            self.servo_pub.publish(self.servo_middle)
-            self.thruster_pub.publish(1500)
-            
+            start_time = time.time()
+            while time.time() - start_time < 3:
+
+                self.servo_pub.publish(self.servo_middle)#헤딩 맞추기
+                self.thruster_pub.publish(1550)
+
+                if time.time() - start_time == 3:
+                    break
+
             if self.cam_detect == True:
+                #인식이 안됐다라고 알려줘야해
             # start_time = time.time()
             # while time.time() - start_time < 3:
             #     self.servo_pub.publish(self.servo_middle)
@@ -357,22 +365,22 @@ class Total_Static:
             #         break
 
                 if self.cam_control_angle == 1: # 왼쪽
-                    self.next(3)
+                    self.next(5)
                     self.control_publish()
 
                 elif self.cam_control_angle == 2: #오른쪽
-                    self.next(2)
+                    self.next(6)
                     self.control_publish()
 
-            # else:
-            #     self.next(3)
-            #     self.control_publish()
-            #     if self.end_check():
-            #         self.next(5)
-            #         self.control_publish()
+            else:
+                self.next(2)
+                self.control_publish()
+                if self.end_check():
+                    self.next(4)
+                    self.control_publish()
 
         if self.end_check():            
-            self.count = 4
+            self.count = 6
     
 
 def main():
@@ -385,7 +393,7 @@ def main():
         print("\n{:<>70}".format(" All Connected !"))
 
     while not rospy.is_shutdown():
-
+        total_static.goal_range = 1
         total_static.end = total_static.end_check()
         
         total_static.print_state()
