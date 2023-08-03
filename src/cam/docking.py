@@ -23,7 +23,7 @@ class Docking :
 
         # TEST set
         self.detecting_color = 3
-        self.detecting_shape = 3
+        self.detecting_shape = 12
         self.color_bounds = {
             "1": ([89, 50, 50], [138, 255, 255]),  # Blue
             "2": ([30, 50, 50], [80, 255, 255]),   # Green
