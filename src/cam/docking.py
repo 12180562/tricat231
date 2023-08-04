@@ -7,9 +7,12 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 import rospy
 import cv2 as cv
 import numpy as np
+
 from std_msgs.msg import UInt16
 from tricat231_pkg.msg import Cam
+
 import cam.markDetection as markDetection
+
 class Docking :
     def __init__(self):
         self.end = False

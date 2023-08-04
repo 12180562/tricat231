@@ -258,7 +258,7 @@ class Total_Static:
         #     psi_desire = self.cam_angle
         # else:
         psi_desire = angle
-            
+
         control_angle = psi_desire - psi
         # 출력
         self.psi_desire = psi_desire
@@ -365,7 +365,7 @@ class Total_Static:
         
         if self.end_check():
             start_time = time.time()
-            while time.time() - start_time < 3:
+            while time.time() - start_time < 5:
                 
                 # self.servo_pub.publish(self.servo_middle) #헤딩 맞추기
                 # self.thruster_pub.publish(1500)
@@ -374,32 +374,32 @@ class Total_Static:
                 self.servo_pub.publish(self.u_servo) #헤딩 맞추기
                 self.thruster_pub.publish(1550)
                 print("여기까진 잘됨")
-                if time.time() - start_time == 3:
+                if time.time() - start_time == 5:
                     break
             print("나오냐?")
             if self.cam_detect == "data: 30":
                 self.cam_detect = 30
             print(self.cam_detect)
-            
-            if self.cam_detect == 10:
-                if self.cam_control_angle == 1: # 왼쪽
-                    print("111111")
-                    self.next(4)
-                    self.control_publish()
-
-                elif self.cam_control_angle == 2: #오른쪽
-                    print("2222222222222")
-                    self.next(5)
-                    self.control_publish()
-
-            elif self.cam_detect == 30:
-                self.next(1)
+        
+        if self.cam_detect == 10:
+            if self.cam_control_angle == 1: # 왼쪽
+                print("111111")
+                self.next(4)
                 self.control_publish()
-                print("1도착")
-                if self.end_check():
-                    print("제바랑아아아ㅏㄹ")
-                    self.next(3)
-                    self.control_publish()
+
+            elif self.cam_control_angle == 2: #오른쪽
+                print("2222222222222")
+                self.next(5)
+                self.control_publish()
+
+        elif self.cam_detect == 30:
+            self.next(1)
+            self.control_publish()
+            print("1도착")
+            if self.end_check():
+                print("제바랑아아아ㅏㄹ")
+                self.next(3)
+                self.control_publish()
 
         if self.end_check():            
             self.count = 5
@@ -420,7 +420,7 @@ def main():
         total_static.print_state()
         print(total_static.cam_detect)
         if total_static.end:
-            if total_static.count == 0 or total_static.count >= 5:
+            if total_static.count >= 5:
                 total_static.count += 1
 
                 total_static.next(total_static.count)
