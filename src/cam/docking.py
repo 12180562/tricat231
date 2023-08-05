@@ -116,7 +116,7 @@ class Docking :
 
 def main():
     docking = Docking()
-    time_trigger = markDetection.TimeBasedTrigger(1.5)
+    time_trigger = markDetection.TimeBasedTrigger(3)
     rospy.init_node('Docking')
     
     if not docking.webcam.isOpened(): # 캠이 연결되지 않았을 경우 # true시 캠이 잘 연결되어있음
