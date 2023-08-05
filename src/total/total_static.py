@@ -37,6 +37,14 @@ class Total_Static:
         self.target_angle = 0
         self.count = 0
         self.end = False
+
+        #docking
+        self.docking_waypoint = []
+        gnss_docking_waypoint = rospy.get_param("docking_waypoints")
+        for waypoint in gnss_docking_waypoint:
+            n,e,_ = gc.enu_convert(waypoint)
+            docking_enu_waypoint = [n, e]
+            self.docking_waypoint.append(docking_enu_waypoint)
         
         #My Boat
         self.psi = 0
@@ -114,10 +122,10 @@ class Total_Static:
         self.obstacles = msg.obstacle
 
     def cam_data_callback(self, msg):
-        self.cam_control_angle = msg.cam_control_angle
-        self.cam_u_thruster = msg.cam_u_thruster
-        self.cam_end = msg.cam_end
-        self.cam_detect = msg.cam_detect
+        self.cam_control_angle = msg.cam_control_angle.data
+        self.cam_u_thruster = msg.cam_u_thruster.data
+        self.cam_end = msg.cam_end.data
+        self.cam_detect = msg.cam_detect.data
 
     # publish function
     def rviz_publish(self):
@@ -357,52 +365,61 @@ class Total_Static:
 
     def moving_right(self):
         self.goal_range = 0.8 #도킹시 골레인지 줄이기
-        self.next(2)
+
+        self.goal_x = self.docking_waypoint[1][0]
+        self.goal_y = self.docking_waypoint[1][1]
         self.control_publish()
-        
-        heading_x = (self.remained_waypoint[4][0] + self.remained_waypoint[5][0])/2
-        heading_y = (self.remained_waypoint[4][1] + self.remained_waypoint[5][1])/2
-        
+
+        heading_x = (self.docking_waypoint[3][0] + self.docking_waypoint[4][0])/2
+        heading_y = (self.docking_waypoint[3][1] + self.docking_waypoint[4][1])/2
         if self.end_check():
-            start_time = time.time()
-            while time.time() - start_time < 5:
+            # start_time = time.time()
+            # while time.time() - start_time < 3:
                 
                 # self.servo_pub.publish(self.servo_middle) #헤딩 맞추기
                 # self.thruster_pub.publish(1500)
-                self.servo_pid_controller(self.psi, self.boat_x, self.boat_y, degrees(atan2(heading_y - self.boat_y, heading_x - self.boat_x)) + 6.5)
+            self.servo_pid_controller(self.psi, self.boat_x, self.boat_y, degrees(atan2(heading_y - self.boat_y, heading_x - self.boat_x)) + 6.5)
+            self.servo_pub.publish(self.u_servo) #헤딩 맞추기
+            self.thruster_pub.publish(1550)
+            if self.psi-5 <= self.target_angle <= self.psi +5:
+            # print("여기까진 잘됨")
+                # if time.time() - start_time == 3:
+                #     break 
+                self.thruster_pub.publish(1500)
+                if self.cam_detect == 10:
+                    if self.cam_control_angle == 1: # 왼쪽
+                        print("111111")
+                        self.goal_x = self.docking_waypoint[3][0]
+                        self.goal_y = self.docking_waypoint[3][1]
+                        self.control_publish()
 
-                self.servo_pub.publish(self.u_servo) #헤딩 맞추기
-                self.thruster_pub.publish(1550)
-                print("여기까진 잘됨")
-                if time.time() - start_time == 5:
-                    break
-            print("나오냐?")
-            if self.cam_detect == "data: 30":
-                self.cam_detect = 30
-            print(self.cam_detect)
-        
-        if self.cam_detect == 10:
-            if self.cam_control_angle == 1: # 왼쪽
-                print("111111")
-                self.next(4)
-                self.control_publish()
+                        if self.end_check():
+                            return True
 
-            elif self.cam_control_angle == 2: #오른쪽
-                print("2222222222222")
-                self.next(5)
-                self.control_publish()
+                    elif self.cam_control_angle == 2: #오른쪽
+                        print("2222222222222")
+                        self.goal_x = self.docking_waypoint[4][0]
+                        self.goal_y = self.docking_waypoint[4][1]
+                        self.control_publish()
 
-        elif self.cam_detect == 30:
-            self.next(1)
-            self.control_publish()
-            print("1도착")
-            if self.end_check():
-                print("제바랑아아아ㅏㄹ")
-                self.next(3)
-                self.control_publish()
+                        if self.end_check():            
+                            return True
 
-        if self.end_check():            
-            self.count = 5
+                elif self.cam_detect == 20:
+                    self.goal_x = self.docking_waypoint[0][0]
+                    self.goal_y = self.docking_waypoint[0][1]       
+                    self.control_publish()
+                    print("1도착")
+                    if self.end_check():
+                        print("제바랑아아아ㅏㄹ")
+                        self.goal_x = self.docking_waypoint[2][0]
+                        self.goal_y = self.docking_waypoint[2][1]
+                        self.control_publish()
+
+                        if self.end_check():            
+                            return True
+        else:
+            self.moving_right()
 
 def main():
     rospy.init_node("Total_Static", anonymous=False)
@@ -420,34 +437,30 @@ def main():
         total_static.print_state()
         print(total_static.cam_detect)
         if total_static.end:
-            if total_static.count >= 5:
-                total_static.count += 1
+            total_static.count += 1
 
-                total_static.next(total_static.count)
-                print(f"{total_static.count} arrive")
+            total_static.next(total_static.count)
+            print(f"{total_static.count} arrive")
 
-                if total_static.count == len(total_static.remained_waypoint):
+            if total_static.count == len(total_static.remained_waypoint):
+                total_static.servo_pub.publish(total_static.servo_middle)
+                total_static.thruster_pub.publish(1500)
+                print("-------------Finished---------------")
+                break
+            else:
+                start_time = time.time()
+                while time.time() - start_time < 3:
+                    # total_static.servo_pid_controller(total_static.psi, total_static.boat_x, total_static.boat_y)
+                    # total_static.servo_pub.publish(total_static.u_servo)
+                    # total_static.thruster_pub.publish(total_static.u_thruster-50)
                     total_static.servo_pub.publish(total_static.servo_middle)
                     total_static.thruster_pub.publish(1500)
-                    print("-------------Finished---------------")
-                    break
-                else:
-                    start_time = time.time()
-                    while time.time() - start_time < 3:
-                        # total_static.servo_pid_controller(total_static.psi, total_static.boat_x, total_static.boat_y)
-                        # total_static.servo_pub.publish(total_static.u_servo)
-                        # total_static.thruster_pub.publish(total_static.u_thruster-50)
-                        total_static.servo_pub.publish(total_static.servo_middle)
-                        total_static.thruster_pub.publish(1500)
-                        if time.time() - start_time == 3:
-                            break
+                    if time.time() - start_time == 3:
+                        break
             
-            else:
-                # if total_static.cam_detect:
-                    # total_static.moving_left()
-                total_static.moving_right()
-                # else:
-                    # pass
+        if total_static.count == 1:
+            total_static.moving_right()
+
         else:
             pass
 
