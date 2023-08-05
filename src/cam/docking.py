@@ -25,13 +25,13 @@ class Docking :
         # self.target_detect_area = rospy.get_param("target_detect_area")
 
         # TEST set
-        self.detecting_color = 3
+        self.detecting_color = 4
         self.detecting_shape = 12
         self.color_bounds = {
             "1": ([89, 50, 50], [138, 255, 255]),  # Blue
             "2": ([30, 50, 50], [80, 255, 255]),   # Green
             "3": ([0, 116, 153], [255, 255, 255]),  # Red
-            "4": ([10, 200, 213], [23, 255, 255]),  # Orange
+            "4": ([145, 197, 0], [184, 255, 255]),  # Orange
             "5": ([89, 16, 21], [151, 255, 255])   # Black
         }
         self.shape_name = {
