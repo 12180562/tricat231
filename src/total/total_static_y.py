@@ -45,9 +45,6 @@ class Total_Static:
             n,e,_ = gc.enu_convert(waypoint)
             docking_enu_waypoint = [n, e]
             self.docking_waypoint.append(docking_enu_waypoint)
-        self.LR = {"L":[0, 1, 2, 1, 2, 1, 2], "R":[1, 3, 4, 0, 2, 3, 4]}
-        self.doc_num = 1 # L: 0 / R: 1
-        self.headon = False
         
         #My Boat
         self.psi = 0
@@ -79,6 +76,8 @@ class Total_Static:
         self.cam_u_thruster = 1500
         self.cam_end = False
         self.cam_detect = 30
+        self.headon = False
+        self.LR = {"L":[1, 4, 2, 3, 1, 0, 2, 3], "R":[0, 2, 3, 4, 0, 1, 3, 4]}
 
         #ROS
         # sub
@@ -162,17 +161,13 @@ class Total_Static:
         return self.distance_goal <= self.goal_range
 
     def next(self, num):
+        # print(f"{self.count} arrive")
         self.count = num
         if num == len(self.remained_waypoint):
             pass
         else:
             self.goal_x = self.remained_waypoint[num][0] # x = 0
             self.goal_y = self.remained_waypoint[num][1] # y = 1
-
-    def next_doc(self, num):
-        self.doc_num = num
-        self.goal_x = self.docking_waypoint[num][0] # x = 0
-        self.goal_y = self.docking_waypoint[num][1] # y = 1
             
     # Step 1. make detecting vector
     def make_detecting_vector(self, psi):
@@ -330,64 +325,87 @@ class Total_Static:
             count: {self.count}\n")
 
     def dock(self, dnum):
-        self.goal_range = 0.8 #도킹 goal range  
+        self.goal_range = 0.8 #도킹 goal range
+            
+        if self.goal_x == self.docking_waypoint[dnum[0]][0] and self.goal_y == self.docking_waypoint[dnum[0]][1]: # 0
+            self.control_publish()
+            print("0번으로 이동중")
+            # self.ddamjil(dnum)
+        #     if self.end_check():
+        #         print("도킹 2번으로")
+        #         self.headon = False
+        #         self.goal_x = self.docking_waypoint[dnum[1]][0] # 2
+        #         self.goal_y = self.docking_waypoint[dnum[1]][1]
+        #         self.control_publish()
+        #     # else:
+        #     #     print("에바야")
+        #     #     self.control_publish()
+        #     #     print("진짜")
+                
+        # elif self.goal_x == self.docking_waypoint[dnum[1]][0] and self.goal_y == self.docking_waypoint[dnum[1]][1]:
+        #     print("도킹 2번에서 전역 2번으로")
+        #     self.control_publish()
+        # else:
+        #     print("6666666666666")
+        #     pass
+            
+        if self.headon and self.cam_detect == 10: # cam_detect == 10: True
+            if self.cam_control_angle == 1: # 왼쪽
+                print("도킹 3번으로")
+                self.goal_x = self.docking_waypoint[dnum[2]][0] # 3
+                self.goal_y = self.docking_waypoint[dnum[2]][1]
+                self.control_publish()
 
-        # 판단 부분
-        if self.doc_num == dnum[0]: # R: 1 / L: 0
-            self.next_doc(dnum[0]) # R: 1 / L: 0
-            if self.headon and self.cam_detect == 10: # cam_detect == 10: True
-                if self.cam_control_angle == 1: # 왼쪽
-                    print("도킹 3번으로")
-                    self.next_doc(dnum[1]) # R: 3 / L: 1
-                    pass
-                elif self.cam_control_angle == 2: #오른쪽
-                    print("도킹 4번으로")
-                    self.next_doc(dnum[2]) # R: 4 / L: 2
-                    pass
-            elif self.headon and (self.cam_detect == 20 or self.cam_detect == 30): # cam_detect == 20: False
-                print("도킹 0번으로")
-                self.next_doc(dnum[3]) # R: 0 / L: 1
-            else:
-                pass
-        elif self.doc_num == dnum[4]: # R: 2 / L: 2
-            print("도킹 2번에서 전역 2번으로")
-            self.next(dnum[4])
+            elif self.cam_control_angle == 2: #오른쪽
+                print("도킹 4번으로")
+                self.goal_x = self.docking_waypoint[dnum[3]][0] # 4
+                self.goal_y = self.docking_waypoint[dnum[3]][1]
+                self.control_publish()
+
+        elif self.headon and (self.cam_detect == 20 or self.cam_detect == 30): # cam_detect == 20: False
+            print("도킹 0번으로")
+            self.goal_x = self.docking_waypoint[dnum[4]][0] # 0
+            self.goal_y = self.docking_waypoint[dnum[4]][1]
+            
         else:
-            pass
+            self.goal_x = self.docking_waypoint[dnum[5]][0] # 1
+            self.goal_y = self.docking_waypoint[dnum[5]][1]
+            heading_x = (self.docking_waypoint[dnum[6]][0] + self.docking_waypoint[dnum[7]][0])/2 # 3, 4
+            heading_y = (self.docking_waypoint[dnum[6]][1] + self.docking_waypoint[dnum[7]][1])/2
 
-        # end check 부분
-        if self.end_check():
-            if self.doc_num == dnum[0]: # R: 1 / L: 0
-                self.head_on()
-                self.dock()
-            elif self.doc_num == dnum[3]: # R: 2 / L: 1
-                print("도킹 2번으로")
-                self.next_doc(dnum[4]) # R: 2 / L: 2
+            if self.end_check():
+                print("헤딩 맞추기")
+                head_angle = degrees(atan2(heading_y - self.boat_y, heading_x - self.boat_x)) + 6.5
+                start_time = time.time()
+                while time.time() - start_time < 5:
+                    print("헤딩 맞추는 중")
+                    self.servo_pid_controller(self.psi, self.boat_x, self.boat_y,  head_angle)
+                    self.servo_pub.publish(self.u_servo) #헤딩 맞추기
+                    self.thruster_pub.publish(1550)
+                    if head_angle - 5 <= self.psi <= head_angle + 5:
+                        self.servo_pub.publish(self.servo_middle) 
+                        # self.thruster_pub.publish(1500)
+                        break
+                print("맞췄다 가자")
+                self.headon = True
             else:
-                pass
-        else:
-            pass
-        self.control_publish()
-        self.print_state()
-        
-        
-    def head_on(self, dnum):
-        print("헤딩 맞추기")
-        heading_x = (self.docking_waypoint[dnum[5]][0] + self.docking_waypoint[dnum[6]][0])/2 
-        heading_y = (self.docking_waypoint[dnum[5]][1] + self.docking_waypoint[dnum[6]][1])/2
-        head_angle = degrees(atan2(heading_y - self.boat_y, heading_x - self.boat_x)) + 6.5
-        while(1):
-            print("헤딩 맞추는 중")
-            self.servo_pid_controller(self.psi, self.boat_x, self.boat_y,  head_angle)
-            self.servo_pub.publish(self.u_servo) #헤딩 맞추기
-            self.thruster_pub.publish(1550)
-            if head_angle - 5 <= self.psi <= head_angle + 5:
-                self.servo_pub.publish(self.servo_middle) 
-                self.thruster_pub.publish(1500)
-                break
-        print("맞췄다 가자")
-        self.headon = True
-
+                self.control_publish()
+        print(self.headon, self.cam_detect)
+    # def ddamjil(self, dnum):
+    #     if self.end_check():
+    #         print("도킹 2번으로")
+    #         self.headon = False
+    #         self.goal_x = self.docking_waypoint[dnum[1]][0] # 2
+    #         self.goal_y = self.docking_waypoint[dnum[1]][1]
+    #         self.control_publish()
+    #         # else:
+    #         #     print("에바야")
+    #         #     self.control_publish()
+    #         #     print("진짜")
+                
+    #     elif self.goal_x == self.docking_waypoint[dnum[1]][0] and self.goal_y == self.docking_waypoint[dnum[1]][1]:
+    #         print("도킹 2번에서 전역 2번으로")
+    #         self.control_publish()
 def main():
     rospy.init_node("Total_Static", anonymous=False)
     rate = rospy.Rate(10) # 10 Hz
@@ -402,6 +420,23 @@ def main():
             dnum = total_static.LR["R"]
             # dnum = total_static.LR["L"]
             total_static.dock(dnum)
+            if total_static.end_check():
+                if (total_static.goal_x == total_static.docking_waypoint[dnum[1]][0]\
+                    or total_static.goal_x == total_static.docking_waypoint[dnum[2]][0]\
+                    or total_static.goal_x ==total_static.docking_waypoint[dnum[3]][0])\
+                    and (total_static.goal_y == total_static.docking_waypoint[dnum[1]][1]\
+                    or total_static.goal_y == total_static.docking_waypoint[dnum[2]][1]\
+                    or total_static.goal_y ==total_static.docking_waypoint[dnum[3]][1]):
+                    print("전역 2로 이동")
+                    total_static.count += 1
+                else:
+                    print("저녁 뭐 먹지")
+                    
+            else:
+                print("1년차 전재윤 왤케 나댐...")
+                
+            total_static.print_state()
+            
             
         else:
             total_static.goal_range = 1
@@ -411,6 +446,7 @@ def main():
             # print(total_static.cam_detect)
             if total_static.end:
                 total_static.count += 1
+
                 total_static.next(total_static.count)
                 print(f"{total_static.count-1} arrive")
 
