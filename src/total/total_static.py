@@ -335,8 +335,9 @@ class Total_Static:
                 self.goal_y = self.docking_waypoint[dnum[1]][1]
                 
             else:
-                print("에바야 진짜")
+                print("에바야")
                 self.control_publish()
+                print("진짜")
                 
         elif self.goal_x == self.docking_waypoint[dnum[1]][0] and self.goal_y == self.docking_waypoint[dnum[1]][1]:
             print("도킹 2번에서 전역 2번으로")
@@ -360,8 +361,7 @@ class Total_Static:
         elif self.headon and (self.cam_detect == 20 or self.cam_detect == 30): # cam_detect == 20: False
             print("도킹 0번으로")
             self.goal_x = self.docking_waypoint[dnum[4]][0] # 0
-            self.goal_y = self.docking_waypoint[dnum[4]][1]       
-            # self.control_publish()
+            self.goal_y = self.docking_waypoint[dnum[4]][1]
             
         else:
             self.goal_x = self.docking_waypoint[dnum[5]][0] # 1
@@ -370,10 +370,10 @@ class Total_Static:
             heading_y = (self.docking_waypoint[dnum[6]][1] + self.docking_waypoint[dnum[7]][1])/2
 
             if self.end_check():
-                print("헤딩  맞추기")
+                print("헤딩 맞추기")
                 head_angle = degrees(atan2(heading_y - self.boat_y, heading_x - self.boat_x)) + 6.5
                 while(1):
-                    print("헤딩  맞추는 중")
+                    print("헤딩 맞추는 중")
                     self.servo_pid_controller(self.psi, self.boat_x, self.boat_y,  head_angle)
                     self.servo_pub.publish(self.u_servo) #헤딩 맞추기
                     self.thruster_pub.publish(1550)
@@ -386,7 +386,6 @@ class Total_Static:
             else:
                 self.control_publish()
         print(self.headon, self.cam_detect)
-        
 
 def main():
     rospy.init_node("Total_Static", anonymous=False)
@@ -403,16 +402,20 @@ def main():
             # dnum = total_static.LR["L"]
             total_static.dock(dnum)
             if total_static.end_check():
-                if (total_static.goal_x == (total_static.docking_waypoint[dnum[1]][0] or total_static.docking_waypoint[dnum[2]][0] or total_static.docking_waypoint[dnum[3]][0]))\
-                and (total_static.goal_y == (total_static.docking_waypoint[dnum[1]][1] or total_static.docking_waypoint[dnum[2]][1] or total_static.docking_waypoint[dnum[3]][1])):
+                if (total_static.goal_x == total_static.docking_waypoint[dnum[1]][0]\
+                    or total_static.goal_x == total_static.docking_waypoint[dnum[2]][0]\
+                    or total_static.goal_x ==total_static.docking_waypoint[dnum[3]][0])\
+                    and (total_static.goal_y == total_static.docking_waypoint[dnum[1]][1]\
+                    or total_static.goal_y == total_static.docking_waypoint[dnum[2]][1]\
+                    or total_static.goal_y ==total_static.docking_waypoint[dnum[3]][1]):
                     print("전역 2로 이동")
                     total_static.count += 1
                 else:
                     print("저녁 뭐 먹지")
-                    pass
+                    
             else:
-                print("에타: 1년차 전재윤 왤케 나댐...")
-                pass
+                print("1년차 전재윤 왤케 나댐...")
+                
             total_static.print_state()
             
             
