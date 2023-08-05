@@ -210,15 +210,15 @@ class Static:
     
     # Step4. PID control
     def servo_pid_controller(self, psi, boat_x, boat_y):
-        if (self.count != self.docking_count) or self.cam_end:
-            psi_desire = self.vector_choose(self.delete_vector_inside_obstacle(self.make_detecting_vector(psi),psi, boat_x, boat_y), boat_x, boat_y)
-            control_angle = psi_desire - psi
-            # 출력
-            self.psi_desire = psi_desire
-        else:
-            control_angle = self.cam_control_angle
-            # 출력
-            self.psi_desire = control_angle + psi
+        # if (self.count != self.docking_count) or self.cam_end:
+        psi_desire = self.vector_choose(self.delete_vector_inside_obstacle(self.make_detecting_vector(psi),psi, boat_x, boat_y), boat_x, boat_y)
+        #     control_angle = psi_desire - psi
+        #     # 출력
+        #     self.psi_desire = psi_desire
+        # else:
+        control_angle = psi_desire - psi
+        # 출력
+        self.psi_desire = control_angle + psi
         
         if control_angle >= 180:
             control_angle = -180 + abs(control_angle) % 180
@@ -275,7 +275,7 @@ def main():
         if static.end_check():
             static.servo_pub.publish(static.servo_middle)
             static.thruster_pub.publish(1500)
-            print("FINISHED")
+            print("-----------------FINISHED---------------------")
         else:
             static.control_publish()
 

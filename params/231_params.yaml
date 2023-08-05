@@ -3,7 +3,7 @@
 origin: [37.4480149, 126.6534485999, 49.451] #분수대 중간 앞쪽
 
 #토너먼트
-autonomous_goal: [37.4481237, 126.6535206, 49.0] #중간 뽈대 조금 앞에
+autonomous_goal: [37.4480964, 126.6535436, 49.0] #중간 뽈대 조금 앞에
 
 # Totla  Use it together
 waypoints: [
@@ -30,7 +30,7 @@ waypoints: [
 
 
 
-goal_range: 0.8 #[m]
+goal_range: 1 #[m]
 
 servo_range: [74, 114] # middle: 94
 

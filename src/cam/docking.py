@@ -18,24 +18,30 @@ class Docking :
         self.end = False
         self.webcam = cv.VideoCapture(0)
 
-        self.detecting_color = rospy.get_param("detecting_color")
-        self.detecting_shape = rospy.get_param("detecting_shape")
-        self.color_bounds = rospy.get_param("color_bounds")
-        self.min_area = rospy.get_param("min_area")
-        self.target_detect_area = rospy.get_param("target_detect_area")
+        # self.detecting_color = rospy.get_param("detecting_color")
+        # self.detecting_shape = rospy.get_param("detecting_shape")
+        # self.color_bounds = rospy.get_param("color_bounds")
+        # self.min_area = rospy.get_param("min_area")
+        # self.target_detect_area = rospy.get_param("target_detect_area")
 
         # TEST set
-        # self.detecting_color = 3
-        # self.detecting_shape = 3
-        # self.color_bounds = {
-        #     "1": ([89, 50, 50], [138, 255, 255]),  # Blue
-        #     "2": ([30, 50, 50], [80, 255, 255]),   # Green
-        #     "3": ([0, 116, 153], [255, 255, 255]),  # Red
-        #     "4": ([10, 200, 213], [23, 255, 255]),  # Orange
-        #     "5": ([89, 16, 21], [151, 255, 255])   # Black
-        # }
-        # self.min_area = 10
-        # self.target_detect_area = 20
+        self.detecting_color = 3
+        self.detecting_shape = 12
+        self.color_bounds = {
+            "1": ([89, 50, 50], [138, 255, 255]),  # Blue
+            "2": ([30, 50, 50], [80, 255, 255]),   # Green
+            "3": ([0, 116, 153], [255, 255, 255]),  # Red
+            "4": ([10, 200, 213], [23, 255, 255]),  # Orange
+            "5": ([89, 16, 21], [151, 255, 255])   # Black
+        }
+        self.shape_name = {
+            "0": "Circle",
+            "3": "Triangle",
+            "4": "Rectangle",
+            "12": "Cross"
+        }
+        self.min_area = 1
+        self.target_detect_area = 5
         
         self.cam_control_angle = 0
         self.cam_u_thruster = 0
@@ -95,7 +101,7 @@ class Docking :
         # cv.imshow("CONTROLLER", img)
         # cv.imshow("MASK", mask)
         
-        img = markDetection.window(raw_image, contour_info, "Triangle")
+        img = markDetection.window(raw_image, contour_info, self.shape_name[str(self.detecting_shape)])
 
         img = cv.resize(img, dsize=(0, 0), fx=1, fy=1)  # 카메라 데이터 원본
         mask = cv.resize(mask, dsize=(0, 0), fx=1, fy=1)  # 색 추출 결과

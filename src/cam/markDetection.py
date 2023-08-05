@@ -107,20 +107,20 @@ def shape_detection(detecting_shape, target_detect_area, min_area, contours):
         # 도형 근사
         """
         cv2.approxPolyDP(curve, epsilon, closed, approxCurve=None) -> approxCurve : 외곽선을 근사화(단순화)
-          • curve: 입력 곡선 좌표. numpy.ndarray. shape=(K, 1, 2)
-          • epsilon: 근사화 정밀도 조절. 입력 곡선과 근사화 곡선 간의 최대 거리. e.g) cv2.arcLength(curve) * 0.02
-          • closed: True를 전달하면 폐곡선으로 인식
-          • approxCurve: 근사화된 곡선 좌표. numpy.ndarray. shape=(K', 1, 2)
+            • curve: 입력 곡선 좌표. numpy.ndarray. shape=(K, 1, 2)
+            • epsilon: 근사화 정밀도 조절. 입력 곡선과 근사화 곡선 간의 최대 거리. e.g) cv2.arcLength(curve) * 0.02
+            • closed: True를 전달하면 폐곡선으로 인식
+            • approxCurve: 근사화된 곡선 좌표. numpy.ndarray. shape=(K', 1, 2)
 
         cv2.arcLength(curve, closed) -> retval: 외곽선 길이를 반환
-          • curve: 외곽선 좌표. numpy.ndarray. shape=(K, 1, 2)
-          • closed: True이면 폐곡선으로 간주
-          • retval: 외곽선 길이
+            • curve: 외곽선 좌표. numpy.ndarray. shape=(K, 1, 2)
+            • closed: True이면 폐곡선으로 간주
+            • retval: 외곽선 길이
 
         approxPolyDP()의 반환인 approx의 구조 (삼각형일 때)
-          • type: numpy.ndarray
-          • shape: (3, 1, 2) -> 변 개수, 1, [행, 열] 정보이므로 요소 두 개
-          • 예: [[[105, 124]], [[107, 205]], [[226, 163]]]
+            • type: numpy.ndarray
+            • shape: (3, 1, 2) -> 변 개수, 1, [행, 열] 정보이므로 요소 두 개
+            • 예: [[[105, 124]], [[107, 205]], [[226, 163]]]
         때에 따라서는 같은 도형이 여러 개 발견될 수도 있음
         """
         approx = cv.approxPolyDP(contour, cv.arcLength(contour, True) * 0.02, True)
@@ -155,6 +155,9 @@ def shape_detection(detecting_shape, target_detect_area, min_area, contours):
                 contour_info = [detect, None, None, None]
         else:
             contour_info = [detect, None, None, None]
+        
+        print(line_num)
+        print(area)
 
     return contour_info
 
