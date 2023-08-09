@@ -38,9 +38,10 @@ class ColorDetect :
     
     def run(self):
         _, cam = self.webcam.read() 
-
+        
         # 1. 영상 이미지 전처리
-        hsv_image = markDetection.image_preprocessing(cam)
+        cam = markDetection.mean_brightness(cam)
+        hsv_image = cv.cvtColor(cam, cv.COLOR_RGB2HSV)
 
         # 2. get current positions of the trackbars
         lower_color = np.array([cv.getTrackbarPos('lowH', 'controller'), cv.getTrackbarPos('lowS', 'controller'), cv.getTrackbarPos('lowV', 'controller')])
